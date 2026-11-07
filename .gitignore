@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.env
+salida/
+data/indice.npz
+data/solicitudes.db
+
+# PDF de la rubrica de evaluacion: material de referencia del equipo, no del repositorio
+Informe_Final_Laboratorios_01_06.pdf

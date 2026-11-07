@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: gestor-productos-pasivos
+    folder: Caja Huancayo
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

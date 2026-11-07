@@ -1,0 +1,104 @@
+{
+  "uid": "gestor-productos-pasivos",
+  "title": "Caja Huancayo · Gestor de Productos Pasivos",
+  "description": "Uso del chat, evidencia, guardas, revisión humana, fuentes y costos operativos.",
+  "tags": ["caja-huancayo", "rag", "productos-pasivos"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "10s",
+  "time": {"from": "now-6h", "to": "now"},
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Consultas",
+      "datasource": {"type": "prometheus", "uid": "prom"},
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "targets": [{"refId": "A", "expr": "sum(increase(gpp_consultas_total[$__range]))"}],
+      "fieldConfig": {"defaults": {"unit": "short", "decimals": 0}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value", "graphMode": "area", "textMode": "value"}
+    },
+    {
+      "id": 2, "type": "stat", "title": "Respuestas con referencias",
+      "datasource": {"type": "prometheus", "uid": "prom"},
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+      "targets": [{"refId": "A", "expr": "100 * sum(increase(gpp_respuestas_citadas_total[$__range])) / clamp_min(sum(increase(gpp_consultas_total[$__range])), 1)"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "decimals": 1, "min": 0, "max": 100}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value", "graphMode": "area", "textMode": "value"}
+    },
+    {
+      "id": 3, "type": "stat", "title": "Abstenciones",
+      "datasource": {"type": "prometheus", "uid": "prom"},
+      "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+      "targets": [{"refId": "A", "expr": "sum(increase(gpp_respuestas_abstenidas_total[$__range]))"}],
+      "fieldConfig": {"defaults": {"unit": "short", "decimals": 0}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value", "graphMode": "area", "textMode": "value"}
+    },
+    {
+      "id": 4, "type": "stat", "title": "Revisiones pendientes",
+      "datasource": {"type": "prometheus", "uid": "prom"},
+      "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
+      "targets": [{"refId": "A", "expr": "gpp_revisiones_pendientes"}],
+      "fieldConfig": {"defaults": {"unit": "short", "decimals": 0}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value", "graphMode": "area", "textMode": "value"}
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Consultas por ruta",
+      "datasource": {"type": "prometheus", "uid": "prom"},
+      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+      "targets": [{"refId": "A", "expr": "sum by (ruta) (rate(gpp_consultas_total[5m]))", "legendFormat": "{{ruta}}"}],
+      "fieldConfig": {"defaults": {"unit": "reqps", "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 12}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Score de recuperación RAG (p50/p95)",
+      "datasource": {"type": "prometheus", "uid": "prom"},
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+      "targets": [
+        {"refId": "A", "expr": "histogram_quantile(0.50, sum by (le) (rate(lab06_rag_score_bucket[5m])))", "legendFormat": "p50"},
+        {"refId": "B", "expr": "histogram_quantile(0.95, sum by (le) (rate(lab06_rag_score_bucket[5m])))", "legendFormat": "p95"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "percentunit", "min": 0, "max": 1, "custom": {"drawStyle": "line", "fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "Latencia de proveedores",
+      "datasource": {"type": "prometheus", "uid": "prom"},
+      "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
+      "targets": [{"refId": "A", "expr": "histogram_quantile(0.95, sum by (le, proveedor) (rate(lab06_api_latencia_segundos_bucket[5m])))", "legendFormat": "{{proveedor}} p95"}],
+      "fieldConfig": {"defaults": {"unit": "s", "custom": {"drawStyle": "line", "lineInterpolation": "smooth"}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Guardas y detección de inyección",
+      "datasource": {"type": "prometheus", "uid": "prom"},
+      "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
+      "targets": [
+        {"refId": "A", "expr": "sum by (estado) (rate(lab06_guarda_respuesta_total[5m]))", "legendFormat": "guardas · {{estado}}"},
+        {"refId": "B", "expr": "rate(lab06_inyeccion_sospechosa_total[5m])", "legendFormat": "inyecciones bloqueadas"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "reqps", "custom": {"drawStyle": "line", "fillOpacity": 8}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 9, "type": "timeseries", "title": "Documentos y fragmentos indexados",
+      "datasource": {"type": "prometheus", "uid": "prom"},
+      "gridPos": {"x": 0, "y": 20, "w": 12, "h": 7},
+      "targets": [
+        {"refId": "A", "expr": "gpp_documentos_indexados", "legendFormat": "documentos"},
+        {"refId": "B", "expr": "gpp_fragmentos_indexados", "legendFormat": "fragmentos"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "short", "custom": {"drawStyle": "line", "lineInterpolation": "stepAfter"}}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 10, "type": "timeseries", "title": "Revisiones humanas resueltas",
+      "datasource": {"type": "prometheus", "uid": "prom"},
+      "gridPos": {"x": 12, "y": 20, "w": 12, "h": 7},
+      "targets": [{"refId": "A", "expr": "sum by (decision) (increase(gpp_revisiones_resueltas_total[$__range]))", "legendFormat": "{{decision}}"}],
+      "fieldConfig": {"defaults": {"unit": "short", "decimals": 0}, "overrides": []},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    }
+  ],
+  "annotations": {"list": []},
+  "links": []
+}

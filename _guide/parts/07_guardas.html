@@ -1,0 +1,40 @@
+<section id="s7" data-title="Formulario, cálculos y guardas">
+  <div class="step-head"><span class="badge">Paso 7</span><h2>El formulario, los cálculos y las guardas</h2><span class="time">35 min</span></div>
+  <p class="why">Aquí vive la parte del sistema que <b>no</b> depende de ningún modelo: validar los datos, calcular la cuota y aplicar las reglas duras del manual.</p>
+
+  <h3><span class="ic">✍️</span>1) El formulario del asesor como contrato</h3>
+  <div class="code long"><div class="code-h"><span class="fn">app/modelos.py · {{LINES:app/modelos.py}} líneas</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:app/modelos.py}}</code></pre></div>
+  <ul class="fn">
+    <li><code>Field(gt=0, …)</code> — ingreso &gt; 0 hace imposible dividir entre cero más adelante. FastAPI responde 422 <b>antes</b> de llamar a Jev u OpenAI.</li>
+    <li><code>pattern=r"^\d{8}$"</code> — el DNI son 8 dígitos. Se valida, se guarda en la base… y nunca sale hacia un tercero.</li>
+    <li><code>assert set(...) == set(politicas...)</code> — si alguien agrega un producto en <code>politicas.py</code> y no en el formulario, el programa no arranca.</li>
+  </ul>
+
+  <div class="theory"><b>📖 Teoría · la cuota con el método francés (Art. 4.1)</b>
+    <div class="formula">i = (1 + TEA)^(1/12) − 1          tasa mensual equivalente
+cuota = M · i / (1 − (1 + i)^−n)   M = monto, n = plazo en meses</div>
+    <p>Ejemplo del cliente de prueba: S/ 12 000 a 24 meses con TEA 35% → i ≈ 2.53% → cuota ≈ S/ 673. Con ingreso S/ 3 500: cuota/ingreso ≈ 19.2% (máximo 30%) y endeudamiento (400 + 673) / 3 500 ≈ 30.7% (observar desde 50%).</p>
+    <p><b>¿Cómo probar una fórmula sin repetirla?</b> La prueba simula el préstamo mes a mes (interés − cuota) y verifica que el saldo final quede en cero. Si la fórmula estuviera mal, el saldo no cerraría.</p>
+  </div>
+  <div class="code"><div class="code-h"><span class="fn">app/herramientas.py · {{LINES:app/herramientas.py}} líneas</span><span class="tag">crear</span><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:app/herramientas.py}}</code></pre></div>
+
+  <h3><span class="ic">✍️</span>2) Las guardas</h3>
+  <div class="code long"><div class="code-h"><span class="fn">app/guardas.py · {{LINES:app/guardas.py}} líneas</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:app/guardas.py}}</code></pre></div>
+  <div class="tw"><table class="wrap">
+    <tr><th>Artículo</th><th>Regla</th><th>Severidad</th></tr>
+    <tr><td>2.1–2.3</td><td>Monto o plazo fuera del rango del producto</td><td>RECHAZAR</td></tr>
+    <tr><td>3.1</td><td>Edad &lt; 21 o &gt; 75 al vencimiento</td><td>RECHAZAR</td></tr>
+    <tr><td>3.2</td><td>Antigüedad menor al mínimo (MYPE siempre exige 12 meses)</td><td>OBSERVAR</td></tr>
+    <tr><td>4.2</td><td>Cuota/ingreso &gt; 30%</td><td>RECHAZAR</td></tr>
+    <tr><td>4.3</td><td>Endeudamiento &gt; 60% / entre 50% y 60%</td><td>RECHAZAR / OBSERVAR</td></tr>
+    <tr><td>5.2 / 5.3</td><td>CPP / Deficiente, Dudoso o Pérdida</td><td>OBSERVAR / RECHAZAR</td></tr>
+    <tr><td>6.1</td><td>Monto desde S/ 50 000: firma del comité</td><td>OBSERVAR</td></tr>
+  </table></div>
+  <div class="note"><b>Límites exactos.</b> "No puede superar el 30%" significa que 30.0% <b>sí</b> está permitido: la comparación es <code>&gt;</code>, no <code>&gt;=</code>. La prueba <code>test_limites_exactos_estan_permitidos</code> lo fija; cambiar el operador la rompe.</div>
+
+  <h3><span class="ic">🧪</span>Prueba</h3>
+  <div class="code long"><div class="code-h"><span class="fn">tests/test_herramientas_guardas.py</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:tests/test_herramientas_guardas.py}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Terminal / PowerShell</span><span class="tag">todos los sistemas</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">python -m pytest tests/test_herramientas_guardas.py</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Salida esperada</span><span class="tag out">salida real</span></div><pre><code>{{OUT:t_guardas}}</code></pre></div>
+  <div class="lab"><b>🔬 ¿Las pruebas protegen de verdad?</b> Al preparar el laboratorio se aplicaron 23 "mutaciones" (romper a propósito cada guarda y cada control: cambiar un <code>&gt;</code> por <code>&gt;=</code>, quitar "Pérdida" de la lista, saltar el comentario obligatorio…). Las 23 hicieron fallar al menos una prueba. Inténtalo tú en el ejercicio 1 del paso 15.</div>
+</section>

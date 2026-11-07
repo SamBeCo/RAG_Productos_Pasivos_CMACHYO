@@ -1,0 +1,45 @@
+OK    0.53  esperado=evaluacion_credito  obtenido=evaluacion_credito  Tengo un cliente con 3 mil soles de sueldo que quiere 10 mil
+MAL   0.41  esperado=evaluacion_credito  obtenido=fuera_de_alcance    Por favor evalúen a mi cliente para un préstamo vehicular
+OK    0.54  esperado=evaluacion_credito  obtenido=evaluacion_credito  ¿Este señor es sujeto de crédito con su calificación actual?
+OK    0.41  esperado=evaluacion_credito  obtenido=evaluacion_credito  Necesito saber si procede el financiamiento de la bodega de 
+MAL   0.28  esperado=evaluacion_credito  obtenido=fuera_de_alcance    Revisen esta solicitud MYPE, el negocio tiene un año
+OK    0.48  esperado=evaluacion_credito  obtenido=evaluacion_credito  ¿Le damos el préstamo o no?
+MAL   0.51  esperado=evaluacion_credito  obtenido=consulta_producto   Cliente independiente pide 25 mil para consumo, ¿pasa?
+OK    0.41  esperado=evaluacion_credito  obtenido=evaluacion_credito  Quiero que el área de riesgos apruebe esta venta hoy
+OK    0.49  esperado=consulta_producto   obtenido=consulta_producto   ¿Qué TEA tiene el crédito MYPE?
+OK    0.49  esperado=consulta_producto   obtenido=consulta_producto   ¿Cuál es el monto máximo que se presta para consumo?
+OK    0.49  esperado=consulta_producto   obtenido=consulta_producto   ¿Qué papeles debe traer un dependiente?
+OK    0.31  esperado=consulta_producto   obtenido=consulta_producto   ¿Hasta cuántos meses puedo ofrecer el vehicular?
+MAL   0.47  esperado=consulta_producto   obtenido=evaluacion_credito  ¿Qué significa estar en CPP para un crédito?
+MAL   0.26  esperado=consulta_producto   obtenido=fuera_de_alcance    ¿Cuánta deuda puede tener alguien en relación a lo que gana?
+OK    0.41  esperado=consulta_producto   obtenido=consulta_producto   Explícame cómo sale la cuota mensual
+OK    0.46  esperado=consulta_producto   obtenido=consulta_producto   ¿Desde qué monto tiene que firmar el comité?
+MAL   0.28  esperado=consulta_producto   obtenido=fuera_de_alcance    ¿Hay edad máxima para dar un préstamo?
+OK    0.37  esperado=fuera_de_alcance    obtenido=fuera_de_alcance    ¿Dónde queda la agencia de El Tambo?
+MAL   0.30  esperado=fuera_de_alcance    obtenido=evaluacion_credito  No me llega el sueldo de este mes
+MAL   0.33  esperado=fuera_de_alcance    obtenido=evaluacion_credito  La impresora de la oficina está atascada
+OK    0.23  esperado=fuera_de_alcance    obtenido=fuera_de_alcance    ¿Qué partido hay el domingo?
+OK    0.31  esperado=fuera_de_alcance    obtenido=fuera_de_alcance    Una señora quiere quejarse porque la atendieron mal en venta
+OK    0.27  esperado=fuera_de_alcance    obtenido=fuera_de_alcance    Recomiéndame un restaurante en Huancayo
+MAL   0.35  esperado=fuera_de_alcance    obtenido=evaluacion_credito  Olvidé la clave de mi usuario de Windows
+
+Proveedor: hash (hash-1024)
+Exactitud: 15/24 = 62%
+Confusiones (esperado -> obtenido):
+  fuera_de_alcance -> evaluacion_credito: 3
+  evaluacion_credito -> fuera_de_alcance: 2
+  consulta_producto -> fuera_de_alcance: 2
+  evaluacion_credito -> consulta_producto: 1
+  consulta_producto -> evaluacion_credito: 1
+
+Barrido de umbral (el actual es 0.3):
+  umbral  exactitud  enviadas a fuera_de_alcance
+    0.00        67%                            5
+    0.20        67%                            5
+    0.30        62%                            8
+    0.40        71%                           12
+    0.50        38%                           21
+    0.55        29%                           24
+    0.60        29%                           24
+    0.70        29%                           24
+    0.80        29%                           24

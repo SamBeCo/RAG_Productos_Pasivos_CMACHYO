@@ -1,0 +1,41 @@
+<section id="s5" data-title="Embeddings, ingesta y RAG">
+  <div class="step-head"><span class="badge">Paso 5</span><h2>Embeddings, ingesta del PDF y búsqueda</h2><span class="time">30 min</span></div>
+  <p class="why">El PDF se convierte en 16 vectores citables. Escribes dos "embedders" con la misma interfaz: el real (OpenAI) y uno sin red para las pruebas.</p>
+
+  <div class="theory"><b>📖 Teoría · qué es un embedding y por qué normalizar</b>
+    <p>Un embedding es una lista de números (1536 con <code>text-embedding-3-small</code>) que representa el significado de un texto: textos parecidos dan vectores que apuntan en direcciones parecidas. La <b>similitud coseno</b> mide ese ángulo: 1 = misma dirección, 0 = sin relación.</p>
+    <div class="formula">coseno(a, b) = (a · b) / (|a| · |b|)      si |a| = |b| = 1  →  coseno = a · b</div>
+    <p>Por eso <code>normalizar_filas()</code> deja cada vector con norma 1: después, la similitud es un simple producto punto.</p>
+    <p><b>El <code>HashEmbedder</code> NO entiende significado.</b> Reparte palabras y trigramas de letras en 1024 posiciones con <code>crc32</code>. "préstamo" y "crédito" no comparten letras, así que para él no se parecen. Sirve para probar la mecánica sin red; la calidad semántica la da OpenAI.</p>
+    <p><b>El índice recuerda con qué embedder se creó.</b> Vectores de modelos distintos no son comparables (ni siquiera tienen la misma dimensión). Si cambias <code>EMBEDDINGS_PROVIDER</code>, la API se niega a arrancar hasta que re-indexes.</p>
+  </div>
+
+  <div class="theory"><b>📖 Teoría · nada personal sale hacia un tercero</b>
+    <p>Desde este paso el sistema empieza a llamar a servicios externos (OpenAI aquí; Jev en el paso 6). Antes de escribir el primer adaptador, escribimos el filtro que todos usarán: <code>enmascarar()</code> reemplaza DNI, teléfono, RUC y correo por <code>[DNI]</code>, <code>[TELEFONO]</code>, <code>[RUC]</code>, <code>[EMAIL]</code>. Va <b>dentro de cada adaptador de salida</b> (no en quien lo llama): así ningún camino nuevo (el chat del paso 9, por ejemplo) puede olvidarlo.</p>
+    <p><b>Límite honesto:</b> son expresiones regulares. No detectan nombres ("Rosa Quispe") ni direcciones. Los lookarounds <code>(?&lt;![\d.])</code> evitan enmascarar montos (<code>10000000.0</code>) o números más largos (cuentas).</p>
+  </div>
+  <div class="code"><div class="code-h"><span class="fn">app/privacidad.py · {{LINES:app/privacidad.py}} líneas</span><span class="tag">crear</span><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:app/privacidad.py}}</code></pre></div>
+  <p class="why">Sus pruebas (<code>tests/test_privacidad.py</code>) llegan en el paso 8, cuando existan los tres adaptadores que lo usan: embeddings, Jev y el LLM.</p>
+
+  <h3><span class="ic">✍️</span>Copia y pega</h3>
+  <div class="code long"><div class="code-h"><span class="fn">app/embeddings.py · {{LINES:app/embeddings.py}} líneas</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:app/embeddings.py}}</code></pre></div>
+  <div class="code long"><div class="code-h"><span class="fn">app/rag.py · {{LINES:app/rag.py}} líneas</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:app/rag.py}}</code></pre></div>
+  <div class="code long"><div class="code-h"><span class="fn">app/ingesta.py · {{LINES:app/ingesta.py}} líneas</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:app/ingesta.py}}</code></pre></div>
+
+  <h3><span class="ic">🔎</span>Qué hace cada parte</h3>
+  <ul class="fn">
+    <li><code>OpenAIEmbedder.embed</code> — envía lotes de 96 textos, ordena la respuesta por <code>index</code> (no asumas el orden) y registra latencia, tokens y costo en las métricas.</li>
+    <li><code>similitudes()</code> — multiplica y suma en vez de <code>matriz @ q</code>. Con numpy 2.x en Mac con chip M, la librería BLAS del sistema emite advertencias falsas ("divide by zero encountered in matmul") aunque el resultado sea correcto. Se verificó: ocurre incluso con datos aleatorios.</li>
+    <li><code>RAG.buscar</code> — devuelve solo fragmentos con similitud ≥ <code>RAG_MIN_SCORE</code>. Si ninguno pasa, cuenta <code>lab06_rag_sin_contexto_total</code> y el agente <b>no inventa</b>: responde que el manual no cubre la pregunta.</li>
+    <li><code>RAG.por_id</code> — recuperación exacta por artículo. La usa el agente para traer las reglas que activó una guarda.</li>
+    <li><code>extraer_fragmentos</code> — recorre el texto del PDF línea por línea, descarta el pie de página y los títulos de capítulo, y abre un fragmento nuevo en cada "Artículo N.N - …". Cada fragmento guarda su página.</li>
+    <li><code>--si-falta</code> — no re-indexa si el índice existe y es del mismo embedder. Docker lo usa al arrancar para no pagar embeddings en cada reinicio.</li>
+  </ul>
+
+  <h3><span class="ic">🧪</span>Prueba</h3>
+  <div class="code long"><div class="code-h"><span class="fn">tests/test_rag.py</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:tests/test_rag.py}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Terminal / PowerShell</span><span class="tag">todos los sistemas</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">python -m pytest tests/test_rag.py</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Salida esperada</span><span class="tag out">salida real</span></div><pre><code>{{OUT:t_rag}}</code></pre></div>
+  <div class="note"><b>Lo que prueba <code>test_el_pdf_devuelve_exactamente_las_reglas_de_la_fuente</code></b>: genera el PDF, lo lee con pypdf y compara los 16 artículos con <code>rules/politicas.py</code>, carácter por carácter. Es la garantía de que el RAG y las guardas dicen lo mismo.</div>
+  <p>El índice real (con embeddings de OpenAI) lo crearás en el paso 11, cuando conectes las claves.</p>
+</section>

@@ -1,0 +1,7 @@
+TYPESAFE_API_KEY (vacía o muy corta) · OPENAI_API_KEY (vacía o muy corta) · OPENAI_MODEL gpt-5.4-mini
+
+[1. Jev (TypeSafe)] omitido: TYPESAFE_API_KEY vacío
+
+[2-3. OpenAI] omitido: OPENAI_API_KEY vacío
+
+Resultado: no hay claves configuradas. Completa TYPESAFE_API_KEY y OPENAI_API_KEY en .env (paso 2)

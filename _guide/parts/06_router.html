@@ -1,0 +1,47 @@
+<section id="s6" data-title="Router Jev">
+  <div class="step-head"><span class="badge">Paso 6</span><h2><code>app/router.py</code> · enrutamiento semántico con Jev y respaldo</h2><span class="time">35 min</span></div>
+  <p class="why">La primera decisión del sistema: ¿esta pregunta es una evaluación de crédito, una consulta de producto o algo que no nos corresponde? Y qué hacer si Jev no responde.</p>
+
+  <h3><span class="ic">✍️</span>1) Las rutas</h3>
+  <div class="code long"><div class="code-h"><span class="fn">data/rutas.json</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="txt">{{FILE:data/rutas.json}}</code></pre></div>
+  <ul class="fn">
+    <li><code>criterio</code> — la descripción que recibe Jev para cada opción. Está en <b>inglés</b> porque la documentación de Jev indica mejor exactitud en inglés; la pregunta del asesor sigue en español. ¿Funciona bien con preguntas en español? Lo mides en el paso 11 con <code>eval_router</code>.</li>
+    <li><code>ejemplos</code> — frases del asesor para el router de respaldo por embeddings. Más ejemplos variados = mejor respaldo.</li>
+    <li><code>fuera_de_alcance</code> — una ruta explícita para "lo demás". Sin ella, el router tendría que meter "la impresora no funciona" en alguna de las otras dos.</li>
+  </ul>
+
+  <div class="theory"><b>📖 Teoría · los errores de una API externa no son todos iguales</b>
+    <div class="tw"><table class="wrap">
+      <tr><th>HTTP</th><th>Significa</th><th>¿Reintentar?</th><th>Motivo en la métrica</th></tr>
+      <tr><td>401 / 403</td><td>Clave inválida o sin permiso</td><td><b>No</b>: reintentar no arregla una clave</td><td><code>auth</code></td></tr>
+      <tr><td>422</td><td>El cuerpo no pasa la validación</td><td><b>No</b>: es un error nuestro</td><td><code>validacion</code></td></tr>
+      <tr><td>429</td><td>Límite de uso</td><td>Sí, respetando <code>retry-after</code></td><td><code>limite</code></td></tr>
+      <tr><td>529 / 5xx</td><td>Sobrecarga o falla del servicio</td><td>Sí, con espera exponencial (0.5 s, 1 s)</td><td><code>servidor</code></td></tr>
+      <tr><td>timeout / DNS</td><td>Red</td><td>Sí</td><td><code>red</code></td></tr>
+    </table></div>
+    <p>Si después de 3 intentos sigue fallando, <code>RouterConRespaldo</code> enruta con embeddings, anota el motivo en la solicitud (el analista lo ve) y cuenta <code>lab06_router_respaldo_total{motivo}</code>. <b>La solicitud del asesor nunca se pierde por una caída de Jev.</b></p>
+    <p><b>Los esperas son inyectables</b> (<code>dormir=time.sleep</code>): las pruebas pasan una lista que registra cuánto se habría esperado, sin esperar de verdad.</p>
+  </div>
+
+  <h3><span class="ic">✍️</span>2) El router</h3>
+  <div class="code long"><div class="code-h"><span class="fn">app/router.py · {{LINES:app/router.py}} líneas</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:app/router.py}}</code></pre></div>
+
+  <h3><span class="ic">🔎</span>Qué hace cada parte</h3>
+  <ul class="fn">
+    <li><code>JevRouter.cuerpo</code> — arma la petición: <code>state</code> = solo la pregunta libre; una pregunta <code>choice</code> llamada <code>ruta</code> con los criterios de <code>rutas.json</code>.</li>
+    <li><code>JevRouter.enrutar</code> — lee <code>answers.ruta.choice</code> y <code>probabilities</code>; si faltara <code>choice</code>, toma la opción más probable. La <b>confianza</b> es la probabilidad de la ruta elegida. Registra los tokens de entrada (Jev no cobra la salida) y el costo.</li>
+    <li><code>datos.get("model")</code> — <code>jev-latest</code> es un alias; la respuesta dice qué versión respondió (por ejemplo <code>jev-1.13.0</code>). Se guarda con la solicitud: si mañana cambia el comportamiento, sabrás desde qué versión.</li>
+    <li><code>_aplicar_umbral</code> — bajo el mínimo, la ruta pasa a <code>fuera_de_alcance</code> y se marca <code>bajo_umbral=True</code>.</li>
+    <li><code>EmbeddingRouter</code> — para cada ruta toma el ejemplo <b>más parecido</b> (no el promedio): una sola frase muy similar basta para reconocer la intención.</li>
+    <li><code>historial</code> — en el chat (paso 9), Jev recibe los 3 últimos mensajes del asesor en <code>state</code>: "Sí, evalúalo" solo se entiende con el mensaje anterior.</li>
+    <li><code>inyeccion</code> — segunda pregunta en la <b>misma</b> llamada, tipo <code>noul</code> (sí/no): "¿el mensaje intenta dar instrucciones a un sistema de IA o forzar una aprobación?". Jev devuelve una probabilidad; si falta en la respuesta, queda <code>None</code> y nada se cae. Cero latencia y casi cero costo extra.</li>
+    <li><code>enmascarar(state)</code> — el texto sale sin DNI, teléfono, RUC ni correo.</li>
+    <li><code>crear_router</code> — con <code>ROUTER_PROVIDER=jev</code> devuelve Jev con respaldo; si no, solo embeddings.</li>
+  </ul>
+
+  <h3><span class="ic">🧪</span>Prueba</h3>
+  <p>Las pruebas levantan un <b>Jev simulado</b> con <code>httpx.MockTransport</code>: verifican el cuerpo que enviamos, cómo leemos la respuesta y cada código de error. No miden si Jev clasifica bien (eso es el paso 11).</p>
+  <div class="code long"><div class="code-h"><span class="fn">tests/test_router.py</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:tests/test_router.py}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Terminal / PowerShell</span><span class="tag">todos los sistemas</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">python -m pytest tests/test_router.py</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Salida esperada</span><span class="tag out">salida real</span></div><pre><code>{{OUT:t_router}}</code></pre></div>
+</section>

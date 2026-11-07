@@ -1,0 +1,52 @@
+<section id="s14" data-title="Validación en Windows">
+  <div class="step-head"><span class="badge">Paso 14</span><h2>Validación de los comandos en Windows: análisis profundo</h2><span class="time">20 min de lectura</span></div>
+  <p class="why">Cada comando de esta guía, su versión para Windows PowerShell 5.1, y <b>cómo se verificó</b>. El análisis completo, con los experimentos, está en <code>docs/ANALISIS_WINDOWS.md</code>.</p>
+
+  <div class="theory"><b>📖 Tres niveles de evidencia</b>
+    <ul>
+      <li><b>Medido</b>: se ejecutó y se observó el resultado (en macOS, simulando la condición de Windows cuando aplica).</li>
+      <li><b>Analizado</b>: lo revisa un programa (el analizador de <code>_guide/build.py</code> o una prueba de pytest) en cada compilación de la guía.</li>
+      <li><b>Conocimiento general</b>: comportamiento documentado de Windows/PowerShell, no reproducido aquí.</li>
+    </ul>
+    <p><b>Límite declarado:</b> no se ejecutó ningún comando en un Windows real ni en PowerShell. Si algo falla en tu equipo, el paso 15 explica cómo reportarlo.</p>
+  </div>
+
+  <h3>1 · Los comandos, uno por uno</h3>
+  <div class="tw"><table class="wrap">
+    <tr><th>Paso</th><th>macOS / Linux</th><th>Windows PowerShell 5.1</th><th>Por qué difiere · evidencia</th></tr>
+    <tr><td>2</td><td><code>mkdir -p a b/c</code></td><td><code>New-Item -ItemType Directory -Force a, b\c | Out-Null</code></td><td><code>-p</code> no existe; <code>-Force</code> crea los intermedios y no falla si ya existe. <i>Analizado</i> (el analizador rechaza <code>mkdir -p</code> en bloques Windows).</td></tr>
+    <tr><td>2</td><td><code>touch x/__init__.py</code></td><td><code>New-Item -ItemType File -Force x\__init__.py</code></td><td><code>touch</code> no existe. Ojo: <code>-Force</code> <b>vacía</b> un archivo existente; aquí da igual porque deben estar vacíos. <i>Conocimiento general.</i></td></tr>
+    <tr><td>2</td><td><code>python3 -m venv .venv</code></td><td><code>py -3 -m venv .venv</code></td><td><code>python3</code> en Windows puede abrir la Microsoft Store. <code>py</code> es el lanzador oficial. <i>Analizado.</i></td></tr>
+    <tr><td>2</td><td><code>source .venv/bin/activate</code></td><td><code>.\.venv\Scripts\Activate.ps1</code></td><td>Otra ruta y otro script. Si la política de ejecución lo bloquea: <code>Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass</code> (solo esa ventana). <i>Conocimiento general.</i></td></tr>
+    <tr><td>2</td><td><code>cp .env.example .env</code></td><td><code>Copy-Item .env.example .env</code></td><td><code>cp</code> es alias en PowerShell, pero <code>Copy-Item</code> no es ambiguo. <i>Analizado.</i></td></tr>
+    <tr><td>2</td><td><code>nano .env</code></td><td><code>notepad .env</code></td><td>El Bloc de notas puede guardar <code>.env.txt</code> si las extensiones están ocultas. <i>Conocimiento general.</i></td></tr>
+    <tr><td>2–12</td><td colspan="2"><code>python -m pip install …</code> · <code>python -m pytest …</code> · <code>python -m app…</code> · <code>docker compose …</code> (idénticos)</td><td><code>python -m pip</code> evita usar el <code>pip</code> de otra instalación. Las rutas <code>tests/test_x.py</code> con <code>/</code> las acepta Python en Windows. <i>Analizado.</i></td></tr>
+    <tr><td>3, 12</td><td colspan="2"><code>python -m scripts.normalizar_env</code> (idéntico)</td><td><b>Medido</b>: Docker Compose v5.1.4 <b>falla</b> con un <code>.env</code> en UTF-16 (el que crea <code>echo X=1 &gt; .env</code> en PowerShell 5.1); acepta UTF-8 con BOM y CRLF. El script normaliza a UTF-8 sin BOM con LF.</td></tr>
+    <tr><td>11</td><td><code>curl http://…/health</code></td><td><code>curl.exe http://…/health</code></td><td>En PowerShell 5.1 <code>curl</code> es alias de <code>Invoke-WebRequest</code>. <i>Analizado</i> (el analizador rechaza <code>curl</code> sin <code>.exe</code> en bloques Windows).</td></tr>
+    <tr><td>11</td><td colspan="2"><kbd>Ctrl</kbd>+<kbd>C</kbd> para detener <code>python -m app</code></td><td><code>app/__main__.py</code> captura <code>KeyboardInterrupt</code>: sin traza de error al salir. <i>Analizado</i> (lectura de código; lección del lab 04).</td></tr>
+  </table></div>
+
+  <h3>2 · Trampas de Windows que el código ya resuelve</h3>
+  <div class="tw"><table class="wrap">
+    <tr><th>Trampa</th><th>Qué pasaría</th><th>Cómo se resolvió · evidencia</th></tr>
+    <tr><td><code>.env</code> en UTF-16 o con BOM</td><td>python-dotenv lee mal la primera variable</td><td><code>decode_env_bytes</code> + 4 pruebas con cada codificación. <i>Medido.</i></td></tr>
+    <tr><td>Salida redirigida (<code>python -m eval.eval_router &gt; r.txt</code>)</td><td>Python escribe en cp1252; un "→" hacía caer <code>eval_router</code> con <code>UnicodeEncodeError</code></td><td><b>Medido</b> con <code>PYTHONIOENCODING=cp1252</code>: fallaba; se reemplazaron los 6 textos con caracteres fuera de cp1252 y una prueba lo impide de nuevo.</td></tr>
+    <tr><td>Archivos sin <code>encoding=</code></td><td>Lectura en cp1252: tildes corruptas</td><td>Prueba de higiene: todo <code>read_text</code>/<code>write_text</code>/<code>open</code> declara <code>encoding</code>. <i>Analizado.</i></td></tr>
+    <tr><td>Git convierte a CRLF</td><td>YAML o scripts dentro del contenedor Linux pueden fallar</td><td><code>.gitattributes</code> con <code>eol=lf</code> + prueba que revisa los archivos que lee Docker. <i>Analizado.</i></td></tr>
+    <tr><td><code>ProactorEventLoop</code> + driver async</td><td>El problema de psycopg del lab 04</td><td>No aplica: SQLite síncrono y clientes HTTP síncronos. <i>Analizado</i> (no hay ningún driver async en el proyecto).</td></tr>
+    <tr><td><code>Invoke-RestMethod -Body</code> con tildes</td><td>PowerShell 5.1 codifica el cuerpo de texto como ISO-8859-1: "Pérdida" llega mal y la API responde 422</td><td>La guía nunca envía JSON desde PowerShell: usa el navegador o <code>loadgen</code> (Python). <i>Conocimiento general.</i></td></tr>
+    <tr><td>Advertencias falsas de numpy</td><td>"divide by zero encountered in matmul" (en Mac con chip M)</td><td><code>similitudes()</code> no usa BLAS. <i>Medido</i> (también con datos aleatorios). No es un problema de Windows, pero confundía.</td></tr>
+  </table></div>
+
+  <h3>3 · Docker Desktop en Windows</h3>
+  <ul class="plain">
+    <li><b>Motor WSL 2</b> (Settings → General → "Use the WSL 2 based engine"). Docker Desktop debe estar abierto antes de <code>docker compose</code>.</li>
+    <li><b>Montajes de archivos</b>: <code>./prometheus/prometheus.yml</code> y <code>./grafana/…</code> se montan desde Windows. Funcionan desde <code>C:\labs\…</code>; evita carpetas de OneDrive (bloqueos durante la sincronización).</li>
+    <li><b>Puertos ocupados</b>: si <code>docker compose up</code> dice "port is already allocated", busca qué proceso usa el puerto:</li>
+  </ul>
+  <div class="code os-mac"><div class="code-h"><span class="fn">Terminal</span><span class="tag">macOS / Linux</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">lsof -i :8000</code></pre></div>
+  <div class="code os-win"><div class="code-h"><span class="fn">PowerShell</span><span class="tag">Windows (PowerShell)</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">Get-NetTCPConnection -LocalPort 8000 -State Listen | Select-Object OwningProcess</code></pre></div>
+
+  <h3>4 · El analizador de comandos</h3>
+  <p>Cada vez que se compila esta guía, <code>_guide/build.py</code> revisa <b>todos</b> los bloques de comandos y la compilación <b>falla</b> si encuentra, en un bloque de Windows: <code>&amp;&amp;</code>, <code>||</code>, <code>touch</code>, <code>export</code>, <code>source</code>, <code>\</code> de continuación, <code>python3</code>, <code>pip</code> suelto, <code>cp/ls/cat/grep/rm</code>, <code>mkdir -p</code>, <code>$(…)</code>, <code>sudo</code>, <code>curl</code> sin <code>.exe</code>, <code>nano/open/lsof</code> o <code>python -c</code>; y en un bloque de macOS: cmdlets de PowerShell, <code>$env:</code>, rutas <code>\Scripts\</code>, <code>curl.exe</code> o <code>notepad</code>. También exige que los bloques macOS/Windows vayan en pares.</p>
+</section>

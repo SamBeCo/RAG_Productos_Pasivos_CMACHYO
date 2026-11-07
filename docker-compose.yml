@@ -1,0 +1,50 @@
+# Prototipo de asistente documental sobre ahorro de Caja Huancayo.
+# Usa los puertos 8001 (app), 9090 y 3000.
+services:
+  app:
+    build: .
+    env_file: .env
+    environment:
+      DB_PATH: /datos/solicitudes.db
+      INDICE_PATH: /datos/indice.npz
+      UPLOAD_DIR: /datos/fuentes_cargadas
+    volumes:
+      - datos:/datos                 # la base y el índice sobreviven a "docker compose down" (no a "down -v")
+    ports:
+      - "127.0.0.1:8001:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  prometheus:
+    image: prom/prometheus:v3.5.5
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      - app
+
+  grafana:
+    image: grafana/grafana:12.4.11
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Configura GRAFANA_ADMIN_PASSWORD en .env}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards/gestor-productos-pasivos:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  datos:
+  prometheus-data:
+  grafana-data:

@@ -1,0 +1,6 @@
+global:
+  scrape_interval: 5s          # en producción 15-30 s; aquí 5 s para ver cambios rápido en clase
+scrape_configs:
+  - job_name: gestor-productos-pasivos
+    static_configs:
+      - targets: ["app:8000"]  # "app" es el nombre del servicio en docker-compose.yml (DNS interno de Docker)

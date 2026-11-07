@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestor de Productos Pasivos · Caja Huancayo</title>
+<style>
+:root {
+  --rojo: #b42318;
+  --rojo-strong: #7f1710;
+  --rojo-hover: #9d261b;
+  --rojo-suave: #fdf2f1;
+  --rojo-borde: #f1d1ce;
+  --oro: #c8962e;
+  --oro-suave: #fbf3df;
+  --n-50: #faf8f7;
+  --n-100: #f5f1f0;
+  --n-200: #e8e0dd;
+  --n-400: #9b8d89;
+  --n-500: #6f6460;
+  --n-700: #473d3a;
+  --n-900: #1b1716;
+  --ok: #1f7a4d;
+  --sombra-sm: 0 6px 18px rgba(35, 18, 14, .07);
+  --sombra-md: 0 18px 44px rgba(35, 18, 14, .12);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font: 15px/1.6 "Inter", "Segoe UI", system-ui, sans-serif;
+  background: radial-gradient(1200px 500px at 85% -10%, #f6e3e0 0%, transparent 60%), linear-gradient(180deg, #fffaf9, #f4efee);
+  color: var(--n-900);
+  display: flex; flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Barra institucional */
+.topbar {
+  background: linear-gradient(100deg, var(--rojo-strong) 0%, var(--rojo) 60%, #c9402f 100%);
+  color: #fff; font-size: 12px; letter-spacing: .02em;
+  padding: 6px 24px; display: flex; gap: 18px; align-items: center; justify-content: space-between;
+}
+.topbar span { opacity: .92; }
+.estado { display: inline-flex; align-items: center; gap: 7px; }
+.estado i { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 0 0 rgba(74,222,128,.7); animation: pulso 2.2s infinite; }
+@keyframes pulso { 70% { box-shadow: 0 0 0 8px rgba(74,222,128,0); } 100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); } }
+
+header {
+  background: rgba(255,255,255,.92); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--n-200);
+  height: 68px; padding: 0 24px; display: flex; align-items: center; gap: 14px; flex-shrink: 0;
+  position: sticky; top: 0; z-index: 40;
+}
+.marca { display: flex; align-items: center; gap: 12px; }
+.logo {
+  width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--rojo) 0%, var(--rojo-strong) 100%);
+  box-shadow: 0 8px 18px rgba(180,35,24,.28), inset 0 1px 0 rgba(255,255,255,.25);
+}
+.logo svg { width: 22px; height: 22px; fill: none; stroke: #fff; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.marca-texto { line-height: 1.2; }
+.marca-texto b { display: block; font-size: 15px; letter-spacing: .01em; }
+.marca-texto small { font-size: 11.5px; color: var(--n-500); letter-spacing: .06em; text-transform: uppercase; }
+.sep { flex: 1; }
+.btn {
+  height: 38px; padding: 0 15px; border-radius: 11px; font: 600 13px/1 "Inter", system-ui, sans-serif;
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer; text-decoration: none; white-space: nowrap;
+  transition: transform .15s, box-shadow .15s, background .15s, border-color .15s;
+}
+.btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.btn-sec { background: #fff; border: 1px solid var(--n-200); color: var(--n-700); }
+.btn-sec:hover { transform: translateY(-1px); border-color: var(--rojo-borde); background: var(--rojo-suave); box-shadow: 0 6px 14px rgba(180,35,24,.1); }
+.btn-adm { background: var(--n-900); border: 1px solid var(--n-900); color: #fff; }
+.btn-adm:hover { transform: translateY(-1px); background: #33292a; box-shadow: 0 6px 14px rgba(0,0,0,.18); }
+.btn:focus-visible, .sugerencia:focus-visible, .tarjeta:focus-visible { outline: 2px solid var(--rojo); outline-offset: 2px; }
+
+main { flex: 1; overflow-y: auto; padding: 28px 16px 18px; scroll-behavior: smooth; }
+.chat { max-width: 920px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.chat > * { animation: sube .28s ease both; }
+@keyframes sube { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* Portada */
+.hero {
+  position: relative; overflow: hidden; border-radius: 26px; padding: 40px 36px 34px; color: #fff;
+  background: linear-gradient(125deg, var(--rojo-strong) 0%, var(--rojo) 55%, #cf4a38 100%);
+  box-shadow: var(--sombra-md);
+}
+.hero::before, .hero::after { content: ""; position: absolute; border-radius: 50%; background: rgba(255,255,255,.07); }
+.hero::before { width: 360px; height: 360px; right: -90px; top: -150px; }
+.hero::after { width: 220px; height: 220px; right: 150px; bottom: -130px; background: rgba(200,150,46,.18); }
+.hero > * { position: relative; z-index: 1; }
+.insignia { display: inline-flex; gap: 8px; align-items: center; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase;
+  background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25); padding: 5px 12px; border-radius: 999px; }
+.hero h1 { font-size: 30px; line-height: 1.2; margin: 14px 0 8px; font-weight: 750; letter-spacing: -.01em; }
+.hero p { max-width: 560px; color: rgba(255,255,255,.88); font-size: 14.5px; }
+.cifras { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+.cifra { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22); border-radius: 14px; padding: 10px 16px; min-width: 150px; backdrop-filter: blur(4px); }
+.cifra b { display: block; font-size: 14px; }
+.cifra span { font-size: 12px; opacity: .85; }
+
+.seccion { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--n-500); margin: 6px 2px -4px; }
+.tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.tarjeta {
+  text-align: left; background: #fff; border: 1px solid var(--n-200); border-radius: 18px; padding: 18px 18px 16px;
+  cursor: pointer; font: inherit; color: inherit; position: relative; overflow: hidden;
+  transition: transform .18s, box-shadow .18s, border-color .18s;
+}
+.tarjeta::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(180deg, var(--rojo), var(--oro)); opacity: .0; transition: opacity .18s; }
+.tarjeta:hover { transform: translateY(-3px); box-shadow: var(--sombra-md); border-color: var(--rojo-borde); }
+.tarjeta:hover::before { opacity: 1; }
+.t-ico { width: 38px; height: 38px; border-radius: 11px; background: var(--rojo-suave); display: grid; place-items: center; margin-bottom: 11px; }
+.t-ico svg { width: 20px; height: 20px; fill: none; stroke: var(--rojo); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tarjeta h3 { font-size: 15px; margin-bottom: 4px; }
+.tarjeta p { font-size: 13px; color: var(--n-500); line-height: 1.5; }
+.tarjeta .ej { display: block; margin-top: 10px; font-size: 12px; color: var(--rojo); font-weight: 600; }
+
+.sugerencias { display: flex; flex-wrap: wrap; gap: 9px; }
+.sugerencia { background: #fff; border: 1px solid var(--n-200); border-radius: 999px; color: var(--n-700); font: 13px/1.2 "Inter", system-ui, sans-serif; padding: 9px 14px; cursor: pointer; transition: all .15s; }
+.sugerencia:hover { background: var(--rojo-suave); border-color: var(--rojo-borde); color: var(--rojo-hover); transform: translateY(-1px); }
+
+.garantias { display: flex; flex-wrap: wrap; gap: 10px 22px; font-size: 12.5px; color: var(--n-500); padding: 4px 2px 0; }
+.garantias span { display: inline-flex; align-items: center; gap: 7px; }
+.garantias svg { width: 15px; height: 15px; fill: none; stroke: var(--ok); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Mensajes */
+.m { max-width: min(78%, 700px); padding: 14px 18px; border-radius: 20px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14.5px; line-height: 1.7; }
+.usuario { align-self: flex-end; background: linear-gradient(135deg, #c2271d 0%, #a01c14 100%); color: #fff; border-bottom-right-radius: 7px; box-shadow: 0 12px 24px rgba(180,35,24,.22); }
+.asistente { align-self: flex-start; background: #fff; border: 1px solid var(--n-200); border-bottom-left-radius: 7px; box-shadow: var(--sombra-sm); border-top: 3px solid var(--rojo); }
+.asistente.comparacion { border-top-color: var(--oro); }
+.sistema { align-self: center; max-width: 88%; background: var(--rojo-suave); border: 1px solid var(--rojo-borde); border-radius: 12px; font-size: 13px; color: var(--rojo-hover); }
+.etiquetas { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 9px; white-space: normal; }
+.chip { font-size: 11px; font-weight: 700; letter-spacing: .04em; padding: 3px 9px; border-radius: 999px; background: var(--rojo-suave); color: var(--rojo); border: 1px solid var(--rojo-borde); }
+.chip.oro { background: var(--oro-suave); color: #7c5d03; border-color: #ecd9a3; }
+.chip.ok { background: #e9f6ef; color: var(--ok); border-color: #bfe3cf; }
+.meta { margin-top: 10px; font-size: 12px; color: var(--n-500); white-space: normal; }
+.meta.alerta { background: #fff7dc; border: 1px solid #f4de96; border-radius: 8px; padding: 6px 10px; color: #7c5d03; font-weight: 600; }
+details { margin-top: 12px; white-space: normal; }
+summary { cursor: pointer; color: var(--rojo); font-size: 12.5px; font-weight: 700; list-style: none; display: inline-flex; gap: 6px; user-select: none; }
+summary::-webkit-details-marker { display: none; }
+summary::before { content: "▸"; font-size: 11px; transition: transform .15s; }
+details[open] summary::before { transform: rotate(90deg); }
+.cita { margin-top: 8px; padding: 11px 14px; border-left: 3px solid var(--rojo); background: linear-gradient(180deg, #fffaf9, #f8f5f4); border-radius: 0 12px 12px 0; font-size: 13px; }
+.cita-cabecera { font-weight: 700; color: var(--rojo-hover); margin-bottom: 3px; }
+.cita-cuerpo { color: var(--n-700); line-height: 1.55; }
+.btn-revision { margin-top: 12px; padding: 7px 12px; border: 1px solid var(--rojo-borde); border-radius: 9px; color: var(--rojo); background: #fff; font: 600 12px/1.3 "Inter", system-ui, sans-serif; cursor: pointer; transition: background .15s; }
+.btn-revision:hover:not(:disabled) { background: var(--rojo-suave); }
+.btn-revision:disabled { opacity: .65; cursor: default; }
+.escribiendo { display: flex; align-items: center; gap: 10px; color: var(--n-500); font-size: 13px; }
+.dots { display: flex; gap: 4px; }
+.dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--rojo); animation: blink 1.3s infinite; }
+.dots span:nth-child(2) { animation-delay: .2s; }
+.dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+
+footer { background: rgba(255,255,255,.9); backdrop-filter: blur(10px); border-top: 1px solid var(--n-200); padding: 12px 16px 12px; flex-shrink: 0; }
+.barra { max-width: 920px; margin: 0 auto; display: flex; gap: 10px; align-items: flex-end; background: #fff; border: 1px solid var(--n-200); border-radius: 20px; padding: 8px 8px 8px 14px; box-shadow: var(--sombra-sm); transition: border-color .15s, box-shadow .15s; }
+.barra:focus-within { border-color: var(--rojo); box-shadow: 0 0 0 4px rgba(180,35,24,.1); }
+.barra textarea { flex: 1; min-height: 48px; max-height: 160px; resize: vertical; border: none; background: transparent; color: var(--n-900); font: 14.5px/1.6 "Inter", system-ui, sans-serif; padding: 9px 6px; outline: none; }
+.barra textarea::placeholder { color: var(--n-400); }
+.btn-enviar { height: 46px; padding: 0 20px; border: none; border-radius: 14px; background: linear-gradient(135deg, var(--rojo), var(--rojo-strong)); color: #fff; font: 700 14px/1 "Inter", system-ui, sans-serif; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: transform .15s, box-shadow .15s, opacity .15s; box-shadow: 0 8px 18px rgba(180,35,24,.25); }
+.btn-enviar svg { width: 15px; height: 15px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.btn-enviar:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 12px 22px rgba(180,35,24,.32); }
+.btn-enviar:disabled { opacity: .55; cursor: not-allowed; }
+.pie { max-width: 920px; margin: 8px auto 0; font-size: 11.5px; color: var(--n-400); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+@media (max-width: 720px) {
+  .topbar span:nth-child(2), .marca-texto small, .btn-sec span { display: none; }
+  .hero { padding: 28px 20px; } .hero h1 { font-size: 23px; }
+  .m { max-width: 92%; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span>Caja Huancayo · Canal de consulta documental</span>
+  <span>Información sustentada en documentos oficiales indexados</span>
+  <span class="estado"><i></i> Servicio activo</span>
+</div>
+
+<header>
+  <div class="marca">
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M3 10l9-6 9 6"/><path d="M5 10v9M9.5 10v9M14.5 10v9M19 10v9"/><path d="M3 21h18"/></svg>
+    </div>
+    <div class="marca-texto"><b>Gestor de Productos Pasivos</b><small>Caja Huancayo</small></div>
+  </div>
+  <div class="sep"></div>
+  <button class="btn btn-sec" id="nueva" type="button" aria-label="Nueva conversación">
+    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Nueva consulta</span>
+  </button>
+  <a class="btn btn-adm" href="/admin">
+    <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Administración
+  </a>
+</header>
+
+<main id="scroll" role="log" aria-live="polite" aria-label="Conversación">
+  <div class="chat" id="chat"></div>
+</main>
+
+<footer>
+  <div class="barra">
+    <textarea id="txt" placeholder="Pregunta por un producto, o escribe «Compara…» para ver diferencias entre dos productos" maxlength="1000" aria-label="Escribe tu consulta" rows="2"></textarea>
+    <button class="btn-enviar" id="enviar" type="button" aria-label="Enviar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Enviar
+    </button>
+  </div>
+  <div class="pie">
+    <span>Enter envía · Shift+Enter nueva línea</span>
+    <span>Prototipo informativo: no constituye asesoría financiera ni oferta contractual.</span>
+  </div>
+</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const mem = {
+  get(k) { try { return sessionStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { v === null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch {} }
+};
+
+const TARJETAS = [
+  { t: "Consultar productos", d: "Requisitos, condiciones, plazos y cierre de cuentas y depósitos.",
+    ej: "¿Qué requisitos tiene la apertura de una cuenta de ahorros?",
+    ico: '<path d="M21 21l-4.3-4.3"/><circle cx="11" cy="11" r="7"/>' },
+  { t: "Comparar productos", d: "Diferencias documentadas entre productos, tasas, comisiones y plazos. No recomienda: describe.",
+    ej: "Compara la cuenta de ahorros con el depósito a plazo fijo",
+    ico: '<path d="M7 4v16M17 4v16"/><path d="M3 8l4-4 4 4M13 16l4 4 4-4"/>' },
+  { t: "Tarifas y comisiones", d: "Consulta el tarifario vigente cargado en las fuentes.",
+    ej: "¿Qué comisión se cobra por retirar dinero en ventanilla?",
+    ico: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h3"/>' },
+  { t: "Contrato de depósitos", d: "Modificaciones, cierre, representación y canales digitales.",
+    ej: "¿Qué obligaciones tiene el cliente ante cambios de apoderado o representación?",
+    ico: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>' }
+];
+const EJEMPLOS = [
+  "¿Cuáles son las condiciones para modificar tasas o comisiones?",
+  "¿Qué pasa si el cliente no acepta una modificación del contrato?",
+  "¿Cómo se valida la contratación por canales digitales?",
+  "¿Cuál es la diferencia entre Ahorro Futuro y Ahorro Programado?"
+];
+const CHECK = '<svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>';
+
+let conv = mem.get("ch-conv");
+let ultimo = 0;
+let ultimaPregunta = "";
+
+const paginasDe = c => {
+  const ps = (c.paginas && c.paginas.length) ? c.paginas : [c.pagina];
+  return ps.length === 1 ? `pág. ${ps[0]}` : `pág. ${ps.join(", ")}`;
+};
+
+function citas(lista) {
+  if (!lista || !lista.length) return "";
+  return `<details><summary>${lista.length} referencia(s) de las fuentes</summary>${lista.map(c => {
+    const ref = c.documento ? `${c.documento} · ${c.ubicacion || c.titulo}` : `Art. ${c.id} · ${c.titulo} (${paginasDe(c)})`;
+    return `<div class="cita"><div class="cita-cabecera">${esc(ref)}</div><div class="cita-cuerpo">${esc(c.texto)}</div></div>`;
+  }).join("")}</details>`;
+}
+
+function pintar(m) {
+  if (m.id <= ultimo) return;
+  ultimo = m.id;
+  $("chat").querySelector(".portada")?.remove();
+
+  const div = document.createElement("div");
+  const meta = m.meta || {};
+  const rolCSS = (m.rol === "usuario" || m.rol === "asesor") ? "usuario" : m.rol === "asistente" ? "asistente" : "sistema";
+  div.className = `m ${rolCSS}${meta.ruta === "comparar_productos" ? " comparacion" : ""}`;
+  div.setAttribute("role", "article");
+
+  let h = "";
+  if (m.rol === "asistente") {
+    const etiquetas = [];
+    if (meta.ruta === "comparar_productos") etiquetas.push('<span class="chip oro">COMPARACIÓN</span>');
+    if (meta.citas && meta.citas.length) etiquetas.push(`<span class="chip ok">${meta.citas.length} FUENTE(S)</span>`);
+    if (meta.revision_humana) etiquetas.push('<span class="chip">REVISIÓN HUMANA</span>');
+    if (etiquetas.length) h += `<div class="etiquetas">${etiquetas.join("")}</div>`;
+  }
+  h += esc(m.texto);
+
+  if (m.rol === "asistente") {
+    const r = meta.router || {};
+    if (meta.consulta && meta.consulta !== ultimaPregunta) h += `<div class="meta">Consulta de referencia: “${esc(meta.consulta)}”</div>`;
+    h += citas(meta.citas);
+    if (meta.estado) h += `<div class="meta">guardas: ${esc(meta.estado)}${meta.reservas && meta.reservas.length ? " · " + meta.reservas.length + " reserva(s)" : ""}</div>`;
+    for (const rv of (meta.reservas || [])) h += `<div class="meta alerta">⚠ ${esc(rv)}</div>`;
+    if (meta.inyeccion_sospechosa) h += `<div class="meta alerta">⚠ Este mensaje parece un intento de dar instrucciones al sistema. Quedó registrado.</div>`;
+    if (meta.revision_humana) h += `<div class="meta">Respuesta emitida tras revisión humana (${esc(meta.decision)}).</div>`;
+    h += `<div class="meta">ruta ${esc(meta.ruta)} · ${esc(r.proveedor)} ${r.confianza != null ? "· confianza " + Number(r.confianza).toFixed(2) : ""}${r.respaldo ? " · respaldo" : ""}</div>`;
+    if (!meta.revision_humana && m.id) {
+      h += `<button class="btn-revision" type="button" data-review-id="${esc(m.id)}">${meta.revision_id ? "En revisión humana" : "Solicitar revisión humana"}</button>`;
+    }
+  }
+
+  if (m.rol === "usuario" || m.rol === "asesor") ultimaPregunta = m.texto;
+  div.innerHTML = h;
+  $("chat").appendChild(div);
+  $("scroll").scrollTop = $("scroll").scrollHeight;
+}
+
+function mostrarInicio() {
+  $("chat").innerHTML = `
+    <section class="portada" style="display:contents">
+      <div class="hero">
+        <span class="insignia">Banca de personas · Productos pasivos</span>
+        <h1>Consulta tus productos pasivos con respaldo documental</h1>
+        <p>Cuentas de ahorro y depósitos de Caja Huancayo. Cada respuesta cita la fuente, y cuando no hay evidencia suficiente se deriva a un analista.</p>
+        <div class="cifras">
+          <div class="cifra"><b>Respuestas con cita</b><span>documento, ubicación y página</span></div>
+          <div class="cifra"><b>Guardas de seguridad</b><span>datos personales y manipulación</span></div>
+          <div class="cifra"><b>Revisión humana</b><span>un analista valida los casos dudosos</span></div>
+        </div>
+      </div>
+      <div class="seccion">¿Qué deseas hacer?</div>
+      <div class="tarjetas">
+        ${TARJETAS.map(t => `<button class="tarjeta" type="button" data-q="${esc(t.ej)}">
+          <div class="t-ico"><svg viewBox="0 0 24 24">${t.ico}</svg></div>
+          <h3>${esc(t.t)}</h3><p>${esc(t.d)}</p><span class="ej">Probar: “${esc(t.ej)}”</span></button>`).join("")}
+      </div>
+      <div class="seccion">Otras consultas frecuentes</div>
+      <div class="sugerencias">${EJEMPLOS.map(e => `<button class="sugerencia" type="button" data-q="${esc(e)}">${esc(e)}</button>`).join("")}</div>
+      <div class="garantias">
+        <span>${CHECK} Solo fuentes oficiales cargadas</span>
+        <span>${CHECK} Datos personales enmascarados</span>
+        <span>${CHECK} Sin recomendaciones financieras personalizadas</span>
+      </div>
+    </section>`;
+  $("chat").querySelectorAll("[data-q]").forEach(b => {
+    b.onclick = () => { $("txt").value = b.dataset.q; $("txt").focus(); };
+  });
+}
+
+async function cargar() {
+  if (!conv) return mostrarInicio();
+  try {
+    const r = await fetch(`/api/chat/${conv}?desde=${ultimo}`);
+    if (r.status === 404) { conv = null; mem.set("ch-conv", null); return mostrarInicio(); }
+    const d = await r.json();
+    d.mensajes.forEach(pintar);
+    if (!d.mensajes.length && !ultimo) mostrarInicio();
+  } catch { mostrarInicio(); }
+}
+
+async function enviar() {
+  const texto = $("txt").value.trim();
+  if (!texto) return;
+  $("enviar").disabled = true;
+  $("txt").value = "";
+  $("chat").querySelector(".portada")?.remove();
+
+  const bUser = document.createElement("div");
+  bUser.className = "m usuario";
+  bUser.setAttribute("role", "article");
+  bUser.textContent = texto;
+  $("chat").appendChild(bUser);
+  $("scroll").scrollTop = $("scroll").scrollHeight;
+
+  const esc2 = document.createElement("div");
+  esc2.className = "m asistente escribiendo";
+  esc2.innerHTML = `<span class="dots"><span></span><span></span><span></span></span>Consultando los documentos…`;
+  $("chat").appendChild(esc2);
+  $("scroll").scrollTop = $("scroll").scrollHeight;
+
+  try {
+    const r = await fetch("/api/chat/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversacion_id: conv, mensaje: texto })
+    });
+
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({ detail: "Error desconocido" }));
+      esc2.remove(); bUser.remove();
+      $("txt").value = texto;
+      const av = document.createElement("div");
+      av.className = "m sistema";
+      av.textContent = `Error ${r.status}: ${typeof err.detail === "string" ? err.detail : JSON.stringify(err.detail)}`;
+      $("chat").appendChild(av);
+      $("scroll").scrollTop = $("scroll").scrollHeight;
+      return;
+    }
+
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "", streamEl = null;
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const trozos = buf.split("\n\n");
+      buf = trozos.pop() || "";
+
+      for (const raw of trozos) {
+        const linea = raw.trim();
+        if (!linea.startsWith("data:")) continue;
+        let p; try { p = JSON.parse(linea.slice(5)); } catch { continue; }
+
+        if (p.type === "start") {
+          conv = p.conversacion_id;
+          mem.set("ch-conv", String(conv));
+        } else if (p.type === "chunk") {
+          if (!streamEl) {
+            esc2.remove();
+            streamEl = document.createElement("div");
+            streamEl.className = "m asistente";
+            streamEl.setAttribute("role", "article");
+            $("chat").appendChild(streamEl);
+          }
+          const actual = (streamEl.dataset.text || "") + p.delta;
+          streamEl.dataset.text = actual;
+          streamEl.innerHTML = esc(actual);
+          $("scroll").scrollTop = $("scroll").scrollHeight;
+        } else if (p.type === "done") {
+          if (streamEl) streamEl.remove();
+          esc2.remove();
+          if (p.mensajes?.length) { bUser.remove(); p.mensajes.forEach(pintar); }
+          if (p.conversacion_id) { conv = p.conversacion_id; mem.set("ch-conv", String(conv)); }
+          break;
+        }
+      }
+    }
+  } catch {
+    esc2.remove(); bUser.remove();
+    $("txt").value = texto;
+    const av = document.createElement("div");
+    av.className = "m sistema";
+    av.textContent = "No se pudo conectar con el servicio. Verifica que el servidor esté en ejecución.";
+    $("chat").appendChild(av);
+    $("scroll").scrollTop = $("scroll").scrollHeight;
+  } finally {
+    $("enviar").disabled = false;
+    $("txt").focus();
+  }
+}
+
+$("enviar").onclick = enviar;
+$("chat").addEventListener("click", async e => {
+  const boton = e.target.closest("[data-review-id]");
+  if (!boton || !conv) return;
+  boton.disabled = true;
+  try {
+    const respuesta = await fetch(`/api/chat/${conv}/revisiones`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({mensaje_id: Number(boton.dataset.reviewId)})
+    });
+    const datos = await respuesta.json();
+    if (!respuesta.ok) throw new Error(datos.detail || `HTTP ${respuesta.status}`);
+    boton.textContent = "En cola de revisión humana";
+  } catch (error) {
+    boton.disabled = false;
+    boton.textContent = error.message.includes("ya fue enviado") ? "Ya está en revisión" : "No se pudo enviar a revisión";
+  }
+});
+$("txt").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviar(); }
+});
+$("nueva").onclick = () => {
+  conv = null; ultimo = 0; ultimaPregunta = "";
+  mem.set("ch-conv", null);
+  mostrarInicio();
+  $("txt").focus();
+};
+
+cargar();
+setInterval(() => { if (!$("enviar").disabled) cargar(); }, 5000);
+</script>
+</body>
+</html>

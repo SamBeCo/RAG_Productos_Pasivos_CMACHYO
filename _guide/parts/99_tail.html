@@ -1,0 +1,161 @@
+</main>
+</div>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+
+  // ---------- resaltado de sintaxis mínimo (py / sh) ----------
+  const PY_KW = "import|from|def|async|await|return|if|else|elif|for|in|while|break|continue|class|try|except|finally|raise|as|with|and|or|not|is|None|True|False|global|lambda|yield|pass";
+  const PY_RE = new RegExp(`(#.*$)|("""[\\s\\S]*?"""|[fbr]?"(?:\\\\.|[^"\\\\\\n])*"|[fbr]?'(?:\\\\.|[^'\\\\\\n])*')|\\b(${PY_KW})\\b|\\b(self|print|len|range|enumerate|zip|max|min|round|sorted|dict|list|set|str|int|float)\\b`, "gm");
+  function paint(el, re, pick) {
+    const src = el.textContent; let out = "", last = 0, m; re.lastIndex = 0;
+    while ((m = re.exec(src))) {
+      out += esc(src.slice(last, m.index));
+      out += pick(m);
+      last = m.index + m[0].length;
+      if (m[0].length === 0) re.lastIndex++;
+    }
+    el.innerHTML = out + esc(src.slice(last));
+  }
+  document.querySelectorAll('code[data-lang="py"]').forEach(el => paint(el, PY_RE, m =>
+    `<span class="${m[1] ? "c" : m[2] ? "s" : m[3] ? "k" : "b"}">${esc(m[0])}</span>`));
+  document.querySelectorAll('code[data-lang="sh"]').forEach(el => {
+    el.innerHTML = el.innerHTML.replace(/^(\s*#.*)$/gm, '<span class="c">$1</span>');
+  });
+
+  // ---------- botones copiar / expandir ----------
+  document.querySelectorAll(".copy").forEach(btn => btn.addEventListener("click", async () => {
+    const text = btn.closest(".code").querySelector("pre").innerText;
+    try { await navigator.clipboard.writeText(text); btn.textContent = "¡Copiado!"; }
+    catch (e) { btn.textContent = "Selecciona y copia"; }
+    setTimeout(() => btn.textContent = "Copiar", 1400);
+  }));
+  document.querySelectorAll(".expand").forEach(btn => btn.addEventListener("click", () => {
+    const open = btn.closest(".code").classList.toggle("open");
+    btn.textContent = open ? "Contraer" : "Ver completo";
+  }));
+
+  // ---------- selector de sistema operativo ----------
+  const mac = $("osMac"), win = $("osWin");
+  function setOS(isWin) {
+    document.body.classList.toggle("win", isWin);
+    mac.classList.toggle("on", !isWin); win.classList.toggle("on", isWin);
+    store.set("lab6-os", isWin ? "win" : "mac");
+  }
+  mac.onclick = () => setOS(false); win.onclick = () => setOS(true);
+  const savedOS = store.get("lab6-os", null);
+  setOS(savedOS ? savedOS === "win" : /Win/.test(navigator.platform));
+
+  // ---------- navegación lateral y progreso ----------
+  const nav = $("nav");
+  const sections = [...document.querySelectorAll("main section")];
+  let doneSet = new Set();
+  try { doneSet = new Set(JSON.parse(store.get("lab6-done", "[]"))); } catch (e) {}
+  const links = {};
+  sections.forEach((sec, i) => {
+    const a = document.createElement("a");
+    a.href = "#" + sec.id; a.innerHTML = `<span class="n">${i === 0 ? "★" : i}</span>${sec.dataset.title}`;
+    nav.appendChild(a); links[sec.id] = a;
+    const head = sec.querySelector(".step-head");
+    if (head) {
+      const btn = document.createElement("button");
+      btn.className = "done-btn"; btn.textContent = "Marcar como hecho";
+      head.appendChild(btn);
+      btn.onclick = () => { doneSet.has(sec.id) ? doneSet.delete(sec.id) : doneSet.add(sec.id); refresh(); };
+      sec._btn = btn;
+    }
+  });
+  function refresh() {
+    let count = 0;
+    sections.forEach(sec => {
+      if (!sec._btn) return;
+      const on = doneSet.has(sec.id); if (on) count++;
+      sec._btn.classList.toggle("on", on); sec._btn.textContent = on ? "✓ Hecho" : "Marcar como hecho";
+      links[sec.id].classList.toggle("done", on);
+    });
+    const total = sections.filter(s => s._btn).length;
+    $("progBar").style.width = (100 * count / total) + "%";
+    store.set("lab6-done", JSON.stringify([...doneSet]));
+  }
+  refresh();
+  if ("IntersectionObserver" in window) {
+    const io = new IntersectionObserver(entries => entries.forEach(en => {
+      if (en.isIntersecting) {
+        Object.values(links).forEach(l => l.classList.remove("active"));
+        links[en.target.id].classList.add("active");
+      }
+    }), { rootMargin: "-20% 0px -70% 0px" });
+    sections.forEach(s => io.observe(s));
+  }
+
+  // ---------- reproductor de traza (datos reales inyectados por build.py) ----------
+  const dataEl = $("traceData");
+  if (dataEl) {
+    let events = [];
+    try { events = JSON.parse(dataEl.textContent); } catch (e) {}
+    const planEv = events.find(e => e.tipo === "plan");
+    const steps = planEv ? planEv.plan.pasos : [];
+    const stepsEl = $("tpSteps"), logEl = $("tpLog"), detEl = $("tpDet"), posEl = $("tpPos"), playBtn = $("tpPlay");
+    let pos = -1, timer = null;
+    const rows = events.map((e, i) => {
+      const row = document.createElement("div");
+      row.className = "tp-ev";
+      const txt = String(e.resumen).replace(/\s+/g, " ");
+      row.innerHTML = `<span class="ag ag-${esc(e.agente)}">${esc(e.agente)}</span><span class="tx">${esc(txt.length > 150 ? txt.slice(0, 147) + "..." : txt)}</span>`;
+      row.onclick = () => { stop(); go(i); };
+      logEl.appendChild(row);
+      return row;
+    });
+    function stateAt(k) {
+      const st = {};
+      steps.forEach(s => st[s.id] = { st: "pendiente", who: "" });
+      for (let i = 0; i <= k; i++) {
+        const e = events[i]; let m;
+        if (e.tipo === "inicio" && (m = /^Paso (\d+):/.exec(e.resumen))) st[m[1]] = { st: "run", who: e.agente };
+        if (e.tipo === "fin" && (m = /^Paso (\d+) -> (HECHO|FALLIDO)/.exec(e.resumen))) st[m[1]] = { st: m[2] === "HECHO" ? "hecho" : "fallido", who: e.agente };
+      }
+      return st;
+    }
+    const LABEL = { pendiente: "pendiente", run: "en curso", hecho: "hecho", fallido: "fallido" };
+    function render() {
+      const st = stateAt(pos);
+      stepsEl.innerHTML = steps.map(s => {
+        const cur = st[s.id];
+        const dep = s.depende_de.length ? ` · depende de ${s.depende_de.join(", ")}` : "";
+        const obj = s.objetivo.length > 78 ? s.objetivo.slice(0, 75) + "..." : s.objetivo;
+        return `<div class="tp-step ${cur.st === "pendiente" ? "" : cur.st}"><small>Paso ${s.id} · ${LABEL[cur.st]}${cur.who ? " · " + esc(cur.who) : ""}${dep}</small>${esc(obj)}</div>`;
+      }).join("");
+      rows.forEach((r, i) => { r.classList.toggle("seen", i <= pos); r.classList.toggle("cur", i === pos); });
+      posEl.textContent = pos < 0 ? `0 / ${events.length} eventos` : `evento ${pos + 1} / ${events.length}`;
+      if (pos >= 0) {
+        const e = events[pos], extra = Object.assign({}, e);
+        ["t", "agente", "tipo", "resumen"].forEach(k => delete extra[k]);
+        detEl.textContent = `[${e.agente}] ${e.tipo} · t = ${e.t} s\n${e.resumen}` + (Object.keys(extra).length ? "\n\n" + JSON.stringify(extra, null, 2) : "");
+        logEl.scrollTop = rows[pos].offsetTop - logEl.clientHeight / 2;
+      } else detEl.textContent = "Pulsa «Siguiente» para empezar.";
+      playBtn.textContent = timer ? "⏸ Pausar" : "▶ Reproducir";
+    }
+    function go(i) { pos = Math.max(-1, Math.min(events.length - 1, i)); render(); }
+    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+    $("tpFirst").onclick = () => { stop(); go(-1); };
+    $("tpPrev").onclick = () => { stop(); go(pos - 1); };
+    $("tpNext").onclick = () => { stop(); go(pos + 1); };
+    $("tpLast").onclick = () => { stop(); go(events.length - 1); };
+    playBtn.onclick = () => {
+      if (timer) { stop(); render(); return; }
+      if (pos >= events.length - 1) pos = -1;
+      timer = setInterval(() => { if (pos >= events.length - 1) { stop(); render(); } else go(pos + 1); }, 900);
+      render();
+    };
+    render();
+  }
+})();
+</script>
+</body>
+</html>

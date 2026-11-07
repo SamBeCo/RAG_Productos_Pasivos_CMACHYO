@@ -1,0 +1,76 @@
+<section id="s3" data-title="config.py y metricas.py">
+  <div class="step-head"><span class="badge">Paso 3</span><h2><code>app/config.py</code> y <code>app/metricas.py</code> · configuración e instrumentación</h2><span class="time">20 min</span></div>
+  <p class="why">Dos archivos base que usan todos los demás: uno lee la configuración y falla temprano si falta algo; el otro declara las métricas antes de que exista el código que las incrementa.</p>
+
+  <div class="theory"><b>📖 Teoría · "fallar al arrancar" vs "fallar en la primera solicitud"</b>
+    <p>Si falta <code>OPENAI_API_KEY</code>, hay dos momentos para enterarse: al arrancar la API (un mensaje claro en la consola del desarrollador) o cuando el primer asesor envía una solicitud (un error 500 en producción). <code>Settings.validar()</code> elige lo primero. Lo mismo para un proveedor mal escrito (<code>LLM_PROVIDER=gpt</code>) o un número con coma decimal (<code>0,55</code>), error típico con configuración regional en español.</p>
+    <p><b>Proveedores intercambiables.</b> Tres variables eligen la implementación de cada pieza sin tocar código:</p>
+    <div class="tw"><table class="wrap">
+      <tr><th>Variable</th><th>Real (guía)</th><th>Alternativa</th><th>Sin claves (pruebas)</th></tr>
+      <tr><td><code>ROUTER_PROVIDER</code></td><td><code>jev</code></td><td><code>embeddings</code> (OpenAI)</td><td><code>hash</code></td></tr>
+      <tr><td><code>LLM_PROVIDER</code></td><td><code>openai</code></td><td>—</td><td><code>mock</code></td></tr>
+      <tr><td><code>EMBEDDINGS_PROVIDER</code></td><td><code>openai</code></td><td>—</td><td><code>hash</code></td></tr>
+    </table></div>
+  </div>
+
+  <h3><span class="ic">✍️</span>Copia y pega</h3>
+  <div class="code long"><div class="code-h"><span class="fn">app/config.py · {{LINES:app/config.py}} líneas</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:app/config.py}}</code></pre></div>
+
+  <h3><span class="ic">🔎</span>Qué hace cada parte</h3>
+  <ul class="fn">
+    <li><code>decode_env_bytes</code> — mira los primeros bytes: <code>FF FE</code>/<code>FE FF</code> es UTF-16 (PowerShell 5.1); si no, UTF-8 y <code>utf-8-sig</code> descarta el BOM del Bloc de notas.</li>
+    <li><code>load_env</code> — <code>override=False</code>: una variable ya definida en el sistema <b>gana</b> sobre <code>.env</code>. Las pruebas lo aprovechan para forzar el modo sin claves.</li>
+    <li><code>Settings</code> — una clase en vez de constantes sueltas: cada <code>Settings()</code> relee el entorno, así una prueba puede cambiar una variable y crear otra configuración.</li>
+    <li><code>validar()</code> — las tres reglas de arranque: proveedor conocido, clave presente para el proveedor real, combinación coherente.</li>
+  </ul>
+
+  <div class="theory"><b>📖 Teoría · métricas de Prometheus en 4 tipos… usamos 3</b>
+    <ul>
+      <li><b>Counter</b> (<code>_total</code>): solo sube. Se consulta con <code>rate()</code> o <code>increase()</code>. Ej.: solicitudes, tokens, errores.</li>
+      <li><b>Gauge</b>: sube y baja. Ej.: tamaño de la cola del analista.</li>
+      <li><b>Histogram</b>: cuenta observaciones en "cubetas" (<code>buckets</code>) y permite percentiles con <code>histogram_quantile()</code>. Ej.: latencia, confianza del router.</li>
+    </ul>
+    <p><b>Cardinalidad:</b> cada combinación de etiquetas es una serie nueva en Prometheus. Por eso las etiquetas son valores de listas cerradas (ruta, dictamen, proveedor). <b>Nunca</b> el DNI, el id de la solicitud o el texto libre: además de reventar Prometheus, sería una fuga de datos personales.</p>
+    <p><b>Series en cero:</b> un contador con etiquetas no aparece en <code>/metrics</code> hasta su primer incremento, y Grafana mostraría "No data". <code>inicializar_series()</code> crea las combinaciones conocidas en 0 al arrancar.</p>
+  </div>
+  <div class="code long"><div class="code-h"><span class="fn">app/metricas.py · {{LINES:app/metricas.py}} líneas</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:app/metricas.py}}</code></pre></div>
+  <p class="why"><code>inicializar_series()</code> importa <code>app.guardas</code> <i>dentro</i> de la función: ese archivo lo crearás en el paso 7, y como la función solo se llama al arrancar la API (paso 9), no hay problema en el orden.</p>
+
+  <h3><span class="ic">🪟</span>Un ayudante para Windows y Docker</h3>
+  <p><code>config.py</code> entiende un <code>.env</code> en UTF-16, pero <b>Docker Compose no</b>: medido con Compose v5.1.4, un <code>.env</code> en UTF-16 hace fallar <code>docker compose up</code> con <i>unexpected character "�" in variable name</i> (UTF-8 con BOM y CRLF sí los acepta). Este script deja el archivo en UTF-8 sin BOM y con LF:</p>
+  <div class="code"><div class="code-h"><span class="fn">scripts/normalizar_env.py · {{LINES:scripts/normalizar_env.py}} líneas</span><span class="tag">crear</span><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:scripts/normalizar_env.py}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Terminal / PowerShell</span><span class="tag">todos los sistemas</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">python -m scripts.normalizar_env</code></pre></div>
+
+  <h3><span class="ic">🧪</span>Prueba</h3>
+  <p>Crea <code>tests/conftest.py</code> (lo usan todas las pruebas: fuerza el modo sin claves) y la prueba de configuración:</p>
+  <div class="code long"><div class="code-h"><span class="fn">tests/conftest.py</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:tests/conftest.py}}</code></pre></div>
+  <div class="code long"><div class="code-h"><span class="fn">tests/test_config.py</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:tests/test_config.py}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Terminal / PowerShell (raíz, entorno activo)</span><span class="tag">todos los sistemas</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">python -m pytest tests/test_config.py</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Salida esperada</span><span class="tag out">salida real</span></div><pre><code>{{OUT:t_config}}</code></pre></div>
+</section>
+
+<section id="s4" data-title="Reglas y PDF">
+  <div class="step-head"><span class="badge">Paso 4</span><h2><code>rules/</code> · las reglas en un solo lugar y el PDF</h2><span class="time">20 min</span></div>
+  <p class="why">Pediste las reglas en PDF: aquí las generas. Pero el detalle importante es <b>de dónde salen</b>: el mismo archivo alimenta el PDF (que lee el RAG) y las guardas (que ejecuta el código).</p>
+
+  <div class="theory"><b>📖 Teoría · una sola fuente de verdad</b>
+    <p>Si el PDF dijera "cuota/ingreso máximo 30%" y la guarda en código usara 35%, el LLM explicaría una regla y el sistema aplicaría otra: el analista vería una justificación que contradice el dictamen. En un banco real el PDF lo publica Riesgos y alguien lo traduce a código; aquí lo resolvemos por construcción: <code>rules/politicas.py</code> define los parámetros una vez, y el texto de cada artículo se arma con f-strings que leen esos parámetros.</p>
+    <p>Las pruebas del paso 5 lo verifican de punta a punta: extraen el texto del PDF y lo comparan con la fuente artículo por artículo.</p>
+  </div>
+
+  <div class="code long"><div class="code-h"><span class="fn">rules/politicas.py · {{LINES:rules/politicas.py}} líneas</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:rules/politicas.py}}</code></pre></div>
+  <div class="code long"><div class="code-h"><span class="fn">rules/generar_pdf.py · {{LINES:rules/generar_pdf.py}} líneas</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:rules/generar_pdf.py}}</code></pre></div>
+
+  <h3><span class="ic">🔎</span>Qué hace cada parte</h3>
+  <ul class="fn">
+    <li><code>PARAMETROS</code> — los límites duros: edad, ratios, antigüedad, monto de comité. Son los que leerá <code>app/guardas.py</code>.</li>
+    <li><code>CAPITULOS</code> — 6 capítulos y 16 artículos. Cada uno tiene un <code>id</code> ("4.2") que será la <b>cita</b> en todo el sistema.</li>
+    <li><code>ENCABEZADO_ARTICULO</code> — "Artículo 4.2 - Relación cuota / ingreso". La ingesta corta el PDF buscando exactamente este patrón.</li>
+    <li><code>invariant=1</code> — sin fecha ni identificador aleatorio: el PDF es idéntico en cada ejecución (útil para pruebas y control de versiones).</li>
+    <li>Fuente <b>Helvetica</b> de reportlab: cubre tildes y ñ (Latin-1) pero no símbolos como "−" (menos tipográfico) o "→". Por eso el texto usa "-".</li>
+  </ul>
+
+  <div class="code"><div class="code-h"><span class="fn">Terminal / PowerShell</span><span class="tag">todos los sistemas</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">python -m rules.generar_pdf</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Salida esperada</span><span class="tag out">salida real</span></div><pre><code>{{OUT:pdf}}</code></pre></div>
+  <div class="check"><b>✔ Verifica</b> abre <code>data/politicas_riesgo.pdf</code>: 3 páginas, pie con el nombre de la entidad ficticia y el número de página. Ese pie es "ruido" que la ingesta tendrá que limpiar.</div>
+</section>

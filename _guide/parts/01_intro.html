@@ -1,0 +1,93 @@
+<section class="hero" id="intro" data-title="Introducción y arquitectura">
+  <div class="kicker">IA Generativa para Desarrolladores · Módulos 3, 4 y 5 · RAG, agentes y producción</div>
+  <h1>Del asesor de ventas al analista de riesgos: enrutamiento semántico, RAG y aprobación humana</h1>
+  <p class="lead">Un asesor de ventas <b>conversa</b> con el sistema sobre las reglas de los productos de crédito. <b>Jev</b> decide qué hacer con cada mensaje; un <b>agente especialista en riesgo</b> calcula, revisa las reglas de un <b>PDF de políticas</b> con RAG y propone un dictamen con <b>OpenAI</b>; cuando hace falta, la conversación <b>escala</b>: un <b>analista humano</b> aprueba o rechaza en una web simple y la decisión vuelve al chat del asesor. Todo medido con <b>Prometheus</b> y <b>Grafana</b>.</p>
+
+  <div class="goal-grid">
+    <div class="goal"><b>1 · Enrutar</b>Clasificar la intención del asesor con Jev (TypeSafe), con umbral de confianza y respaldo si la API falla.</div>
+    <div class="goal"><b>2 · Conversar</b>RAG conversacional sobre un PDF de reglas: citas exactas (artículo + página), preguntas de seguimiento y datos personales enmascarados.</div>
+    <div class="goal"><b>3 · Decidir con control</b>Cálculos en código, guardas deterministas y un LLM que solo puede <i>endurecer</i> el dictamen.</div>
+    <div class="goal"><b>4 · Aprobar</b>Humano en el circuito: segregación de funciones, comentario obligatorio y decisiones atómicas.</div>
+    <div class="goal"><b>5 · Observar</b>Métricas de negocio, de calidad y de costo en Prometheus; un tablero de Grafana listo.</div>
+  </div>
+
+  <figure class="fig">
+    <svg class="dg" viewBox="0 0 960 470" role="img" aria-label="Arquitectura: el asesor envía el formulario; Jev elige la ruta; la consulta de producto se responde con RAG; la evaluación de crédito pasa por cálculos, guardas, RAG y OpenAI y queda pendiente; el analista aprueba en una web; el asesor ve la decisión; Prometheus recoge métricas y Grafana las muestra.">
+      <defs><marker id="ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="rgba(255,255,255,.75)"/></marker>
+            <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#ffcc66"/></marker></defs>
+
+      <rect class="bx" x="10" y="150" width="120" height="96" rx="10"/>
+      <text x="70" y="176" text-anchor="middle" class="t-b">Asesor (chat)</text><text x="70" y="194" text-anchor="middle" class="t-s">/asesor</text>
+      <text x="70" y="212" text-anchor="middle" class="t-s">conversación</text><text x="70" y="228" text-anchor="middle" class="t-s">+ formulario si escala</text>
+      <path class="ln" d="M130 198 H180" marker-end="url(#ah1)"/>
+
+      <rect class="bx bx-v" x="180" y="140" width="150" height="116" rx="12"/>
+      <text x="255" y="166" text-anchor="middle" class="t-b">Router Jev</text>
+      <text x="255" y="186" text-anchor="middle" class="t-s">pregunta "choice"</text>
+      <text x="255" y="202" text-anchor="middle" class="t-s">ruta + probabilidad</text>
+      <text x="255" y="220" text-anchor="middle" class="t-s">umbral → fuera</text>
+      <text x="255" y="240" text-anchor="middle" class="t-s t-w">respaldo: embeddings</text>
+
+      <path class="ln" d="M330 170 L390 70" marker-end="url(#ah1)"/>
+      <path class="ln" d="M330 198 H390" marker-end="url(#ah1)"/>
+      <path class="ln" d="M330 230 L390 330" marker-end="url(#ah1)"/>
+
+      <rect class="bx" x="390" y="40" width="190" height="60" rx="10"/>
+      <text x="485" y="64" text-anchor="middle" class="t-b">consulta_producto</text><text x="485" y="84" text-anchor="middle" class="t-s">RAG conversacional → chat</text>
+      <rect class="bx bx-c" x="390" y="140" width="190" height="130" rx="12"/>
+      <text x="485" y="164" text-anchor="middle" class="t-b">evaluacion_credito</text>
+      <text x="485" y="184" text-anchor="middle" class="t-s">1 cálculos (código)</text>
+      <text x="485" y="200" text-anchor="middle" class="t-s">2 guardas → piso</text>
+      <text x="485" y="216" text-anchor="middle" class="t-s">3 RAG: reglas del PDF</text>
+      <text x="485" y="232" text-anchor="middle" class="t-s">4 OpenAI → propuesta</text>
+      <text x="485" y="252" text-anchor="middle" class="t-s t-c">final = más estricto</text>
+      <rect class="bx" x="390" y="305" width="190" height="56" rx="10"/>
+      <text x="485" y="328" text-anchor="middle" class="t-b">fuera_de_alcance</text><text x="485" y="346" text-anchor="middle" class="t-s">mensaje de derivación</text>
+
+      <rect class="bx" x="390" y="395" width="190" height="60" rx="10"/>
+      <text x="485" y="419" text-anchor="middle" class="t-b">PDF de políticas → índice</text><text x="485" y="437" text-anchor="middle" class="t-s">lo usa el RAG de las dos rutas de arriba</text>
+
+      <path class="ln" d="M580 205 H640" marker-end="url(#ah1)"/><text x="610" y="196" text-anchor="middle" class="t-s">SQLite</text>
+      <rect class="bx bx-w" x="640" y="150" width="150" height="110" rx="12"/>
+      <text x="715" y="176" text-anchor="middle" class="t-b">PENDIENTE</text>
+      <text x="715" y="196" text-anchor="middle" class="t-s">el asesor NO ve</text><text x="715" y="212" text-anchor="middle" class="t-s">la propuesta</text>
+      <text x="715" y="240" text-anchor="middle" class="t-s">/api/cola (token)</text>
+      <path class="ln ln-d" d="M790 205 H830" marker-end="url(#ah2)"/>
+      <rect class="bx bx-w" x="830" y="150" width="120" height="110" rx="12"/>
+      <text x="890" y="176" text-anchor="middle" class="t-w t-b">Analista</text>
+      <text x="890" y="196" text-anchor="middle" class="t-s">/analista</text>
+      <text x="890" y="214" text-anchor="middle" class="t-s">aprueba / rechaza</text>
+      <text x="890" y="232" text-anchor="middle" class="t-s">comentario si</text><text x="890" y="246" text-anchor="middle" class="t-s">se aparta</text>
+      <path class="ln" d="M890 150 V20 H70 V150" marker-end="url(#ah1)"/>
+      <text x="480" y="14" text-anchor="middle" class="t-s">la decisión vuelve al chat del asesor: condiciones + artículos citados (sondeo cada 3 s)</text>
+
+      <rect class="bx bx-g" x="640" y="330" width="310" height="125" rx="12"/>
+      <text x="795" y="354" text-anchor="middle" class="t-b">Observabilidad</text>
+      <text x="795" y="374" text-anchor="middle" class="t-s">GET /metrics ← Prometheus (cada 5 s)</text>
+      <text x="795" y="392" text-anchor="middle" class="t-s">rutas · confianza · dictámenes · acuerdo IA-humano</text>
+      <text x="795" y="410" text-anchor="middle" class="t-s">latencia · tokens · costo · errores · cola</text>
+      <text x="795" y="434" text-anchor="middle" class="t-s t-c">Grafana: tablero aprovisionado</text>
+    </svg>
+    <figcaption>Tres rutas. Las preguntas sobre reglas se responden en el chat; solo la evaluación de un cliente llega al analista humano, y el asesor nunca puede aprobar su propia venta.</figcaption>
+  </figure>
+
+  <h3>Qué es real y qué es simulado</h3>
+  <div class="tw"><table class="wrap">
+    <tr><th>Pieza</th><th>Estado</th></tr>
+    <tr><td><b>Datos y reglas</b></td><td><b>Ficticios.</b> El PDF es de una entidad inventada (<i>Caja Demo Andina</i>). No es la política de Caja Huancayo ni de nadie.</td></tr>
+    <tr><td><b>Jev (TypeSafe)</b></td><td>Código preparado para la <b>API real</b> (<code>POST /v1/systemone</code>). El formato del cuerpo y de la respuesta se tomó de documentación de terceros (DigitalOcean, LiteLLM, guías publicadas en 2026) y se prueba contra un servidor simulado. <b>No se ejecutó contra la API real al preparar esta guía</b>: tu primera ejecución de <code>verificar_claves</code> (paso 11) es también la prueba.</td></tr>
+    <tr><td><b>OpenAI</b></td><td>Código preparado para la <b>API real</b> (Responses API con JSON Schema estricto + <code>text-embedding-3-small</code>), probado con el SDK oficial contra respuestas HTTP simuladas. <b>Tampoco se ejecutó con una clave real</b> al preparar la guía.</td></tr>
+    <tr><td><b>Modo sin claves</b></td><td><code>hash</code> (embeddings léxicos) y <code>mock</code> (LLM de reglas fijas). Existen para que <code>pytest</code> corra sin red ni costo. <b>No son inteligencia</b>: el router <code>hash</code> acierta 62% en el set de prueba. Las salidas capturadas en esta guía usan este modo y lo indican.</td></tr>
+    <tr><td><b>Docker, Prometheus, Grafana</b></td><td><b>Ejecutados de verdad</b> en macOS (Docker Desktop) con el modo sin claves: contenedores sanos, Prometheus leyendo <code>/metrics</code>, las 23 consultas del tablero ejecutándose sin error.</td></tr>
+    <tr><td><b>Chat, escalamiento y aprobación</b></td><td><b>Recorrido real en el navegador</b> (modo sin claves): pregunta de seguimiento reformulada, formulario en el chat, analista viendo la conversación, decisión de vuelta en el chat.</td></tr>
+    <tr><td><b>Enmascarado de datos personales</b></td><td>Probado sobre el cuerpo HTTP que recibirían Jev y OpenAI (servidores simulados). Expresiones regulares: <b>no detecta nombres propios</b>.</td></tr>
+    <tr><td><b>Windows</b></td><td>Los comandos PowerShell se revisaron con un analizador automático (paso 14) y el código tiene pruebas de higiene para Windows. <b>No se ejecutaron en un Windows real.</b></td></tr>
+  </table></div>
+
+  <h3>Requisitos</h3>
+  <ul class="plain">
+    <li>Python <b>3.10 o superior</b> · Docker Desktop · un navegador · VS Code (recomendado).</li>
+    <li>Una clave de <b>TypeSafe</b> (<code>TYPESAFE_API_KEY</code>) y una de <b>OpenAI</b> (<code>OPENAI_API_KEY</code>). Sin clave de Jev puedes enrutar con embeddings de OpenAI (<code>ROUTER_PROVIDER=embeddings</code>).</li>
+    <li>Costo esperado del laboratorio completo: <b>centavos de dólar</b> (Jev cobra USD 0.042 por millón de tokens de entrada según su lista de precios publicada; OpenAI depende del modelo que elijas).</li>
+  </ul>
+</section>

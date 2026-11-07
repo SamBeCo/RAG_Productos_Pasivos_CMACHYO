@@ -1,0 +1,92 @@
+[
+  {
+    "pregunta": "¿Qué descripción tiene la cuenta de ahorros a libre disponibilidad?",
+    "answerable": true,
+    "fuentes_esperadas": [
+      {
+        "documento": "Caracteristicas_SubProductos.xlsx",
+        "contiene": ["Cuenta de ahorros a libre disponibilidad"]
+      }
+    ]
+  },
+  {
+    "pregunta": "¿Qué saldo promedio mensual requiere Plan Mujer Segura?",
+    "answerable": true,
+    "fuentes_esperadas": [
+      {
+        "documento": "Caracteristicas_SubProductos.xlsx",
+        "contiene": ["saldo promedio mensual de S/ 1,000"]
+      }
+    ]
+  },
+  {
+    "pregunta": "¿Cuál es la TEA de Cuenta Futuro en PEN según el tarifario?",
+    "answerable": true,
+    "fuentes_esperadas": [
+      {
+        "documento": "Tarifario_Caja_Huancayo.xlsx",
+        "contiene": ["Subproducto: Cuenta Futuro", "Tasa: 2.50%"]
+      }
+    ]
+  },
+  {
+    "pregunta": "¿Cuál es el monto mínimo de apertura de Ahorro Corriente en ventanilla?",
+    "answerable": true,
+    "fuentes_esperadas": [
+      {
+        "documento": "Tarifario_Caja_Huancayo.xlsx",
+        "contiene": ["Monto_Minimo: S/ 5.00 (Ventanilla)"]
+      }
+    ]
+  },
+  {
+    "pregunta": "¿Cómo se denomina el subproducto Ahorro Corriente en ventanilla y cuenta digital?",
+    "answerable": true,
+    "fuentes_esperadas": [
+      {
+        "documento": "Tarifario_Caja_Huancayo.xlsx",
+        "contiene": ["Ahorro Corriente (Ventanilla y Cuenta Digital)"]
+      }
+    ]
+  },
+  {
+    "pregunta": "¿Cómo se puede disponer del dinero de la cuenta?",
+    "answerable": true,
+    "fuentes_esperadas": [
+      {
+        "documento": "SUB_PRODUCTOS_CMACHYO.docx",
+        "contiene": ["permite disponer del dinero de manera directa"]
+      }
+    ]
+  },
+  {
+    "pregunta": "¿Quién puede cerrar las cuentas según el contrato?",
+    "answerable": true,
+    "fuentes_esperadas": [
+      {
+        "documento": "Contrato de Depositos y Servicios Financieros V15 - 2025.pdf",
+        "contiene": ["podrá cerrar las Cuentas de EL CLIENTE"]
+      }
+    ]
+  },
+  {
+    "pregunta": "¿A quién está dirigido el sistema de ahorro a largo plazo?",
+    "answerable": true,
+    "fuentes_esperadas": [
+      {
+        "documento": "SUB_PRODUCTOS_CMACHYO.docx",
+        "contiene": ["Personas naturales"]
+      }
+    ]
+  },
+  {
+    "pregunta": "¿Cuánto cuesta un helado de vainilla?",
+    "answerable": false,
+    "fuentes_esperadas": []
+  },
+  {
+    "pregunta": "¿Cuál es el precio del pasaje de la Tierra a Marte?",
+    "answerable": false,
+    "fuentes_esperadas": []
+  }
+]

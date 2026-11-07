@@ -1,0 +1,63 @@
+<section id="s11" data-title="APIs reales: Jev y OpenAI">
+  <div class="step-head"><span class="badge">Paso 11</span><h2>Conectar Jev y OpenAI de verdad, indexar el PDF y medir el router</h2><span class="time">30 min</span></div>
+  <p class="why">Hasta aquí todo corrió sin red. Ahora usas tus claves: primero una prueba de humo de 5 segundos, después el índice real y la medición del router.</p>
+
+  <h3><span class="ic">1️⃣</span>Prueba de humo de las claves</h3>
+  <div class="code long"><div class="code-h"><span class="fn">scripts/verificar_claves.py · {{LINES:scripts/verificar_claves.py}} líneas</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:scripts/verificar_claves.py}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Terminal / PowerShell</span><span class="tag">todos los sistemas</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">python -m scripts.verificar_claves</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Formato esperado con tus claves</span><span class="tag">no capturado · tus valores variarán</span></div><pre><code>TYPESAFE_API_KEY …a1b2 · OPENAI_API_KEY …c3d4 · OPENAI_MODEL gpt-5.4-mini
+
+[1. Jev (TypeSafe)]
+  modelo=jev-1.13.0  ruta=evaluacion_credito  confianza=0.9…
+  probabilidades={'evaluacion_credito': 0.9…, 'consulta_producto': 0.0…, 'fuera_de_alcance': 0.0…}
+  OK en 0.… s
+
+[2. OpenAI LLM (Responses API)]
+  modelo=gpt-5.4-mini-…  tokens entrada/salida=…/…
+  datos={'respuesta': '¡Hola! …', 'reglas_citadas': []}
+  OK en 1.… s
+
+[3. OpenAI embeddings]
+  modelo=text-embedding-3-small  dimensión=1536
+  OK en 0.… s
+
+Resultado: TODO OK</code></pre></div>
+  <p>Así se ve <b>sin claves</b> (salida real, capturada al preparar la guía):</p>
+  <div class="code"><div class="code-h"><span class="fn">Salida real sin claves</span><span class="tag out">salida real</span></div><pre><code>{{OUT:verificar_sin_claves}}</code></pre></div>
+  <div class="warn"><b>⚠ Si algo falla, lee el tipo de error</b>
+    <ul class="plain">
+      <li><code>Jev [auth]: HTTP 401</code> → clave de TypeSafe inválida o vencida. <code>Jev [validacion]: HTTP 422</code> → el cuerpo no coincide con lo que espera la API: copia el mensaje completo (nombra el campo) y revisa <code>JevRouter.cuerpo</code>.</li>
+      <li><code>Jev [red]</code> → proxy o firewall de la red corporativa bloqueando <code>api.typesafe.ai</code>.</li>
+      <li><code>AuthenticationError</code> → clave de OpenAI. <code>NotFoundError</code> o <code>BadRequestError</code> mencionando el modelo → tu cuenta no tiene acceso a <code>OPENAI_MODEL</code>: elige otro en la página de modelos de OpenAI. <code>respuesta incomplete</code> → sube <code>OPENAI_MAX_OUTPUT_TOKENS</code> o baja <code>OPENAI_REASONING_EFFORT</code>.</li>
+      <li><code>RateLimitError</code> con "insufficient_quota" → la cuenta de OpenAI no tiene saldo.</li>
+    </ul>
+  </div>
+
+  <h3><span class="ic">2️⃣</span>El índice real (embeddings de OpenAI)</h3>
+  <div class="code"><div class="code-h"><span class="fn">Terminal / PowerShell</span><span class="tag">todos los sistemas</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">python -m app.ingesta</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Formato esperado con OpenAI</span><span class="tag">no capturado</span></div><pre><code>Índice creado: 16 artículos · 1536 dimensiones · embedder openai-text-embedding-3-small · páginas [1, 2, 3]</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Salida real en modo sin claves (embeddings hash), para comparar</span><span class="tag out">salida real</span></div><pre><code>{{OUT:ingesta}}</code></pre></div>
+  <p>Los 16 artículos suman unos 4 400 caracteres, del orden de 1 200 tokens (estimación, no medición): con el precio publicado de <code>text-embedding-3-small</code> el costo es una fracción de centavo.</p>
+
+  <h3><span class="ic">3️⃣</span>¿Qué tan bien enruta? Medición con un set de oro</h3>
+  <div class="theory"><b>📖 Teoría · no midas con tus propios ejemplos</b>
+    <p><code>data/router_gold.json</code> tiene 24 frases <b>distintas</b> de los ejemplos de <code>rutas.json</code>, con la ruta correcta anotada. Medir con los mismos ejemplos daría 100% y no diría nada. El script imprime la exactitud, las confusiones (qué ruta se confunde con cuál) y un <b>barrido de umbral</b>: cuánto cambia la exactitud y cuántas preguntas se mandan a <code>fuera_de_alcance</code> con cada umbral.</p>
+    <p><b>24 frases es poco.</b> Sirve para comparar proveedores y elegir un umbral razonable, no para garantizar calidad. En producción se mediría con cientos de preguntas reales anonimizadas.</p>
+  </div>
+  <div class="code"><div class="code-h"><span class="fn">data/router_gold.json</span><span class="tag">crear</span><button class="copy">Copiar</button></div><pre><code data-lang="txt">{{FILE:data/router_gold.json}}</code></pre></div>
+  <div class="code long"><div class="code-h"><span class="fn">eval/eval_router.py · {{LINES:eval/eval_router.py}} líneas</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:eval/eval_router.py}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Terminal / PowerShell · los tres proveedores</span><span class="tag">todos los sistemas</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">python -m eval.eval_router --proveedor jev
+python -m eval.eval_router --proveedor embeddings
+python -m eval.eval_router --proveedor hash</code></pre></div>
+  <div class="code long"><div class="code-h"><span class="fn">Salida real con <code>--proveedor hash</code> (sin red)</span><span class="tag out">salida real</span><button class="expand">Ver completo</button></div><pre><code>{{OUT:eval_hash}}</code></pre></div>
+  <div class="lab"><b>🔬 Anota tus resultados</b> y compáralos en clase. El router <code>hash</code> acierta 62% porque solo ve letras: confunde "Olvidé la clave de mi usuario de Windows" con una evaluación de crédito. Con Jev y con embeddings de OpenAI, ¿cuánto acierta? ¿Qué frases siguen fallando? ¿El umbral 0.55 de Jev es el mejor según el barrido? Ajusta <code>ROUTER_MIN_CONFIDENCE</code> en <code>.env</code> con lo que midas.</div>
+
+  <h3><span class="ic">4️⃣</span>Levantar la API en tu equipo</h3>
+  <div class="code"><div class="code-h"><span class="fn">Terminal / PowerShell</span><span class="tag">todos los sistemas</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">python -m app</code></pre></div>
+  <p>Abre <a href="http://127.0.0.1:8000/asesor">http://127.0.0.1:8000/asesor</a> y, en otra pestaña, <a href="http://127.0.0.1:8000/analista">http://127.0.0.1:8000/analista</a> (con tu <code>ANALISTA_TOKEN</code>). En otra terminal, comprueba que responde:</p>
+  <div class="code os-mac"><div class="code-h"><span class="fn">Terminal</span><span class="tag">macOS / Linux</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">curl http://127.0.0.1:8000/health</code></pre></div>
+  <div class="code os-win"><div class="code-h"><span class="fn">PowerShell</span><span class="tag">Windows (PowerShell)</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">curl.exe http://127.0.0.1:8000/health</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Salida esperada</span><span class="tag out">salida real</span></div><pre><code>{"status":"ok"}</code></pre></div>
+  <div class="win winonly"><b>🪟 <code>curl</code> vs <code>curl.exe</code></b> En Windows PowerShell 5.1, <code>curl</code> es un <i>alias</i> de <code>Invoke-WebRequest</code>: acepta otros parámetros y muestra una tabla en vez del cuerpo. <code>curl.exe</code> es el curl real (incluido en Windows 10 1803 y posteriores).</div>
+  <p>Detén el servidor con <kbd>Ctrl</kbd>+<kbd>C</kbd> antes del paso 12: Docker usará el mismo puerto 8000.</p>
+</section>

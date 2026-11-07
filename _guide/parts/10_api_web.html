@@ -1,0 +1,37 @@
+<section id="s10" data-title="API, chat y bandeja del analista">
+  <div class="step-head"><span class="badge">Paso 10</span><h2>La API y las dos páginas: el chat del asesor y la bandeja del analista</h2><span class="time">45 min</span></div>
+  <p class="why">Todo se conecta por HTTP. Dos páginas HTML simples, sin frameworks ni compilación: el asesor conversa en un chat; el analista revisa y decide en su bandeja.</p>
+
+  <h3><span class="ic">✍️</span>1) La API</h3>
+  <div class="code long"><div class="code-h"><span class="fn">app/main.py · {{LINES:app/main.py}} líneas</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:app/main.py}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">app/__main__.py</span><span class="tag">crear</span><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:app/__main__.py}}</code></pre></div>
+
+  <h3><span class="ic">🔎</span>Qué hace cada parte</h3>
+  <ul class="fn">
+    <li><code>construir_servicios</code> — valida la configuración y arma las piezas una sola vez al arrancar. <code>create_app(servicios)</code> acepta piezas ya armadas: así las pruebas inyectan un router fijo y el LLM simulado.</li>
+    <li><code>/api/chat</code>, <code>/api/chat/{id}</code>, <code>/api/chat/{id}/evaluacion</code> — la conversación del paso 9 expuesta por HTTP. <code>/api/chat/nueva</code> crea una conversación vacía para escalar con el botón sin gastar una llamada a Jev.</li>
+    <li><code>crear_solicitud</code> (<code>/api/solicitudes</code>) — el camino sin chat (formulario + pregunta en un solo envío). Lo usan las pruebas y la carga de prueba.</li>
+    <li><code>cola</code> — cada pendiente lleva la <b>conversación que la originó</b> (últimos 12 mensajes) y la marca de inyección. <code>vista_conversacion</code> traslada la marca al mensaje del asesor que la causó.</li>
+    <li><code>vista_asesor</code> — lo que ve el asesor. Mientras está pendiente <b>no</b> incluye la propuesta del agente.</li>
+    <li><code>solo_analista</code> — compara el token con <code>hmac.compare_digest</code> (tiempo constante: no filtra por cuánto tarda cuántos caracteres coinciden). Sin token configurado, la aprobación queda <b>deshabilitada</b> (503), nunca abierta.</li>
+    <li><code>decidir</code> — 404 si no existe, 409 si ya se decidió, 422 si se aparta del agente sin comentario (mínimo 10 caracteres). Registra si coincidió con el agente y cuánto tardó, y <b>avisa en el chat</b> de origen.</li>
+    <li><code>def</code> (no <code>async def</code>) — los endpoints llaman a APIs con clientes síncronos; FastAPI los ejecuta en un grupo de hilos y no bloquea el servidor.</li>
+  </ul>
+
+  <h3><span class="ic">✍️</span>2) Las dos páginas</h3>
+  <div class="code long"><div class="code-h"><span class="fn">web/asesor.html · {{LINES:web/asesor.html}} líneas</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="txt">{{FILE:web/asesor.html}}</code></pre></div>
+  <div class="code long"><div class="code-h"><span class="fn">web/analista.html · {{LINES:web/analista.html}} líneas</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="txt">{{FILE:web/analista.html}}</code></pre></div>
+  <ul class="fn">
+    <li><code>esc()</code> — todo texto que viene del servidor se escapa antes de insertarlo en la página. Sin esto, una "pregunta" con <code>&lt;script&gt;</code> se ejecutaría en el navegador del analista (XSS).</li>
+    <li><b>Chat</b> — Enter envía, Shift+Enter hace salto de línea. Cada respuesta muestra la ruta, los artículos citados (desplegables) y, si se reformuló, "Busqué en el manual: …". El formulario aparece <b>dentro</b> del chat solo cuando la respuesta trae <code>accion: "formulario"</code> (al recargar la página no se reabre uno viejo).</li>
+    <li><b>Sondeo</b> — el chat pide mensajes nuevos cada 3 s <b>solo</b> mientras hay una solicitud pendiente; el analista refresca la bandeja cada 5 s si no está revisando una. En producción: WebSocket o SSE como en el lab 04.</li>
+    <li><code>sessionStorage</code> — la conversación y el token del analista se recuerdan mientras la pestaña está abierta; todo acceso va en <code>try/catch</code> (en modo privado puede fallar).</li>
+  </ul>
+
+  <h3><span class="ic">🧪</span>Prueba</h3>
+  <div class="code long"><div class="code-h"><span class="fn">tests/test_chat.py</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:tests/test_chat.py}}</code></pre></div>
+  <div class="code long"><div class="code-h"><span class="fn">tests/test_api.py</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:tests/test_api.py}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Terminal / PowerShell</span><span class="tag">todos los sistemas</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">python -m pytest tests/test_api.py tests/test_chat.py</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Salida esperada · test_chat.py</span><span class="tag out">salida real</span></div><pre><code>{{OUT:t_chat}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Salida esperada · test_api.py</span><span class="tag out">salida real</span></div><pre><code>{{OUT:t_api}}</code></pre></div>
+</section>

@@ -1,0 +1,72 @@
+<section id="s12" data-title="Docker, Prometheus y Grafana">
+  <div class="step-head"><span class="badge">Paso 12</span><h2>Docker Compose: la app, Prometheus y Grafana</h2><span class="time">40 min</span></div>
+  <p class="why">Tres contenedores: la API (con tus claves), Prometheus que la lee cada 5 segundos, y Grafana con el tablero ya cargado.</p>
+
+  <div class="warn"><b>⚠ Puertos 8000, 9090 y 3000</b> Son los mismos del lab 04. Si lo tienes levantado, entra a esa carpeta y ejecuta <code>docker compose down</code>. Y detén <code>python -m app</code> del paso 11.</div>
+
+  <h3><span class="ic">✍️</span>1) La imagen de la app</h3>
+  <div class="code"><div class="code-h"><span class="fn">Dockerfile</span><span class="tag">crear</span><button class="copy">Copiar</button></div><pre><code data-lang="txt">{{FILE:Dockerfile}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">.dockerignore</span><span class="tag">crear</span><button class="copy">Copiar</button></div><pre><code data-lang="txt">{{FILE:.dockerignore}}</code></pre></div>
+  <ul class="fn">
+    <li><code>.dockerignore</code> excluye <code>.env</code>: <b>las claves nunca quedan dentro de la imagen</b>. Llegan al contenedor en tiempo de ejecución por <code>env_file</code>.</li>
+    <li><code>python -m app.ingesta --si-falta</code> — al arrancar indexa el PDF solo si no hay índice (o si cambiaste de embedder). Reiniciar no vuelve a pagar embeddings.</li>
+    <li><code>sh -c "… &amp;&amp; …"</code> — este <code>&amp;&amp;</code> se ejecuta <b>dentro</b> del contenedor Linux, no en tu PowerShell: no hay problema en Windows.</li>
+  </ul>
+
+  <h3><span class="ic">✍️</span>2) Los tres servicios</h3>
+  <div class="code long"><div class="code-h"><span class="fn">docker-compose.yml</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="txt">{{FILE:docker-compose.yml}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">prometheus/prometheus.yml</span><span class="tag">crear</span><button class="copy">Copiar</button></div><pre><code data-lang="txt">{{FILE:prometheus/prometheus.yml}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">grafana/provisioning/datasources/prometheus.yml</span><span class="tag">crear</span><button class="copy">Copiar</button></div><pre><code data-lang="txt">{{FILE:grafana/provisioning/datasources/prometheus.yml}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">grafana/provisioning/dashboards/dashboards.yml</span><span class="tag">crear</span><button class="copy">Copiar</button></div><pre><code data-lang="txt">{{FILE:grafana/provisioning/dashboards/dashboards.yml}}</code></pre></div>
+  <div class="code long"><div class="code-h"><span class="fn">grafana/dashboards/lab06.json · {{LINES:grafana/dashboards/lab06.json}} líneas (cópialo completo)</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="txt">{{FILE:grafana/dashboards/lab06.json}}</code></pre></div>
+  <ul class="fn">
+    <li><code>targets: ["app:8000"]</code> — dentro de la red de Docker cada servicio se llama por su nombre. Desde tu navegador es <code>localhost:8000</code>; desde Prometheus es <code>app:8000</code>.</li>
+    <li><code>volumes: datos:/datos</code> — la base SQLite y el índice sobreviven a <code>docker compose down</code>. <code>down -v</code> los borra.</li>
+    <li><code>uid: prom</code> — el tablero referencia la fuente de datos por este identificador fijo, por eso funciona sin configurar nada a mano.</li>
+    <li>Imágenes con versión fija (<code>prom/prometheus:v3.5.5</code>, <code>grafana/grafana:12.4.11</code>), las mismas del lab 04: <code>latest</code> cambia sin aviso.</li>
+  </ul>
+
+  <h3><span class="ic">✍️</span>3) Tráfico de prueba y la prueba de higiene</h3>
+  <div class="code long"><div class="code-h"><span class="fn">loadgen/generar_carga.py · {{LINES:loadgen/generar_carga.py}} líneas</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:loadgen/generar_carga.py}}</code></pre></div>
+  <div class="code long"><div class="code-h"><span class="fn">tests/test_windows_hygiene.py</span><span class="tag">crear</span><button class="expand">Ver completo</button><button class="copy">Copiar</button></div><pre><code data-lang="py">{{FILE:tests/test_windows_hygiene.py}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Terminal / PowerShell</span><span class="tag">todos los sistemas</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">python -m pytest tests/test_windows_hygiene.py
+python -m pytest</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Salida esperada · higiene</span><span class="tag out">salida real</span></div><pre><code>{{OUT:t_higiene}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Salida esperada · suite completa</span><span class="tag out">salida real</span></div><pre><code>{{OUT:t_todo}}</code></pre></div>
+
+  <h3><span class="ic">🚀</span>4) Levantar el stack</h3>
+  <div class="code"><div class="code-h"><span class="fn">Terminal / PowerShell</span><span class="tag">todos los sistemas</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">python -m scripts.normalizar_env
+docker compose up -d --build
+docker compose ps</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">Salida de docker compose ps (después de ~20 s)</span><span class="tag out">salida real</span></div><pre><code>{{OUT:compose_ps}}</code></pre></div>
+  <p>Si <code>app</code> no llega a <code>healthy</code>, mira sus registros: el mensaje de <code>Settings.validar()</code> o de la ingesta te dirá qué falta.</p>
+  <div class="code"><div class="code-h"><span class="fn">Terminal / PowerShell</span><span class="tag">todos los sistemas</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">docker compose logs app</code></pre></div>
+
+  <div class="warn"><b>⚠ Antes de generar tráfico: espera a que Prometheus esté leyendo</b>
+    <p>Abre <a href="http://localhost:9090/targets">http://localhost:9090/targets</a> y espera a ver <code>lab06</code> en <b>UP</b>. Al preparar la guía, la primera carga se envió antes de la primera lectura de Prometheus y <b>todos los paneles mostraron 0</b> aunque la API había contado 12 solicitudes. La razón: <code>increase()</code> y <code>rate()</code> miden la diferencia entre dos muestras; si la primera muestra que ve Prometheus ya vale 12, no hay "antes" contra qué comparar. Las series pre-inicializadas en 0 (paso 3) solo ayudan si Prometheus alcanza a leer ese 0.</p>
+  </div>
+  <div class="code"><div class="code-h"><span class="fn">Terminal / PowerShell</span><span class="tag">todos los sistemas</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">python -m loadgen.generar_carga</code></pre></div>
+  <div class="code long"><div class="code-h"><span class="fn">Salida real (modo sin claves, 12 solicitudes)</span><span class="tag out">salida real</span><button class="expand">Ver completo</button></div><pre><code>{{OUT:loadgen}}</code></pre></div>
+  <p>Con Jev y OpenAI cada solicitud tarda segundos (no 0.0 s) y la columna de tiempo te da una primera idea de la latencia real.</p>
+
+  <h3><span class="ic">📊</span>5) Grafana</h3>
+  <p>Abre <a href="http://localhost:3000/d/lab06">http://localhost:3000/d/lab06</a> (acceso anónimo de solo lectura; para editar: usuario <code>admin</code>, clave <code>admin</code>).</p>
+  <div class="theory"><b>📖 Teoría · las consultas PromQL del tablero</b>
+    <div class="tw"><table class="wrap">
+      <tr><th>Panel</th><th>PromQL</th><th>Cómo se lee</th></tr>
+      <tr><td>Consultas</td><td><code>sum(increase(lab06_chat_mensajes_total[$__range])) + sum(increase(lab06_solicitudes_total[$__range]))</code></td><td>Todo lo que hizo el asesor en el rango: preguntas del chat (también las que solo van al PDF) + formularios y escalamientos. <code>increase()</code> extrapola: puede mostrar 6.1 en vez de 6</td></tr>
+      <tr><td>Acuerdo IA</td><td><code>sum(increase(…{coincide_con_agente="si"}[$__range])) / (sum(increase(…[$__range])) &gt; 0)</code></td><td>Proporción de decisiones humanas iguales a la propuesta. El filtro <code>&gt; 0</code> deja la serie vacía si no hubo decisiones: Grafana muestra «—» en vez de un 0% engañoso</td></tr>
+      <tr><td>Confianza del router</td><td><code>histogram_quantile(0.1, sum by (le, proveedor) (rate(lab06_router_confianza_bucket[…])))</code></td><td>El 10% de preguntas más dudosas tiene una confianza menor que este valor</td></tr>
+      <tr><td>Latencia p95</td><td><code>histogram_quantile(0.95, sum by (le, proveedor) (rate(lab06_api_latencia_segundos_bucket[…])))</code></td><td>El 95% de las llamadas a cada proveedor tarda menos que esto</td></tr>
+      <tr><td>Guardas que anularon al LLM</td><td><code>sum by (regla) (increase(lab06_guarda_anulacion_total[…]))</code></td><td>Con el LLM real, si crece, el modelo está proponiendo cosas que las reglas no permiten</td></tr>
+    </table></div>
+    <p><b>Señales para vigilar en producción:</b> acuerdo IA-humano que baja (el agente dejó de ser útil, o los analistas aprueban a ciegas si sube a 100%), uso del router de respaldo distinto de 0 (Jev con problemas), p10 del RAG bajo el umbral (preguntas que el manual no cubre), costo que crece más rápido que las solicitudes.</p>
+  </div>
+  <div class="check"><b>✔ Verifica</b> los 5 indicadores de arriba tienen número, la fila "Conversación del asesor (chat)" muestra las conversaciones de la carga, "Solicitudes por ruta" muestra tres líneas y "Dictamen del agente" usa verde/ámbar/rojo para APROBAR/OBSERVAR/RECHAZAR, siempre con su nombre en la leyenda.</div>
+
+  <h3><span class="ic">🧹</span>Detener</h3>
+  <p>Detener y <b>conservar</b> la base y el índice:</p>
+  <div class="code"><div class="code-h"><span class="fn">Terminal / PowerShell</span><span class="tag">todos los sistemas</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">docker compose down</code></pre></div>
+  <p>Detener y <b>borrar</b> la base y el índice (si cambias de embedder o quieres empezar de cero):</p>
+  <div class="code"><div class="code-h"><span class="fn">Terminal / PowerShell</span><span class="tag">todos los sistemas</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">docker compose down -v</code></pre></div>
+</section>

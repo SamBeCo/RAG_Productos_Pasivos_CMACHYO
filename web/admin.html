@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Administración · Gestor de Productos Pasivos</title>
+<style>
+:root{color-scheme:light;--red:#b51f2b;--red-dark:#8f1722;--ink:#202a35;--muted:#66727d;--line:#e4e8ec;--paper:#fff;--bg:#f4f6f8;--green:#16744a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "Segoe UI",Arial,sans-serif}
+header{background:var(--red);color:white;padding:18px max(22px,calc((100% - 1120px)/2));display:flex;align-items:center;gap:14px}
+.brand{font-weight:750;font-size:18px}.tag{opacity:.83;font-size:13px}.spacer{flex:1}a{color:inherit}header a{padding:8px 12px;border:1px solid #ffffff72;border-radius:8px;text-decoration:none}
+main{max-width:1120px;margin:26px auto;padding:0 20px}.intro{margin-bottom:20px}.intro h1{margin:0;font-size:25px}.intro p{margin:5px 0;color:var(--muted)}
+.auth,.panel,.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 16px #17202a0a}
+.auth{padding:18px;display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:18px}.field{display:grid;gap:5px;flex:1;min-width:190px}label{font-weight:650;font-size:13px}input,textarea,select{font:inherit;border:1px solid #ccd3da;border-radius:8px;padding:10px;background:white;color:var(--ink)}textarea{min-height:84px;resize:vertical}
+button{font:inherit;font-weight:650;border:0;border-radius:8px;background:var(--red);color:white;padding:10px 15px;cursor:pointer}button:hover{background:var(--red-dark)}button.secondary{background:#edf1f4;color:var(--ink);border:1px solid var(--line)}button.secondary:hover{background:#e2e8ed}button.danger{background:#7a2430}
+.status{min-height:24px;color:var(--muted);margin:7px 0 15px}.status.error{color:#a11623}.status.ok{color:var(--green)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel{padding:20px;min-width:0}.panel h2{font-size:18px;margin:0 0 13px}.panel p.help{color:var(--muted);font-size:13px;margin:0 0 14px}
+.upload{display:grid;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--line);margin-bottom:14px}.list{display:grid;gap:10px}.card{padding:14px}.card h3{margin:0 0 5px;font-size:15px;overflow-wrap:anywhere}.meta{color:var(--muted);font-size:12px}.quote{padding:10px;background:#f7f8fa;border-left:3px solid var(--red);margin:10px 0;white-space:pre-wrap;overflow-wrap:anywhere;max-height:210px;overflow:auto}.review-actions{display:grid;gap:9px;margin-top:12px}.review-actions .row{display:flex;gap:8px;flex-wrap:wrap}.links{display:flex;gap:14px;margin-top:18px;color:var(--red);font-weight:650}.empty{color:var(--muted);padding:16px 0}
+@media(max-width:800px){.grid{grid-template-columns:1fr}header{padding:14px 18px}.tag{display:none}main{margin:18px auto;padding:0 14px}}
+</style>
+</head>
+<body>
+<header><span class="brand">Caja Huancayo</span><span class="tag">Gestor de Productos Pasivos · Administración</span><span class="spacer"></span><a href="/">Volver al chat</a></header>
+<main>
+  <div class="intro"><h1>Administración del conocimiento</h1><p>Carga fuentes oficiales y revisa respuestas que el asistente no pudo sustentar.</p></div>
+  <form class="auth" id="auth">
+    <div class="field"><label for="token">Token de administrador</label><input id="token" type="password" autocomplete="current-password" required></div>
+    <button type="submit">Conectar</button>
+  </form>
+  <div id="status" class="status" role="status"></div>
+  <div class="grid">
+    <section class="panel">
+      <h2>Fuentes indexadas</h2>
+      <p class="help">Las fuentes iniciales son el contrato, las características, los subproductos y el tarifario. Aquí puedes agregar PDFs y reindexar.</p>
+      <form class="upload" id="upload">
+        <div class="field"><label for="pdf">Agregar PDF con texto seleccionable (máximo configurado por el administrador)</label><input id="pdf" type="file" accept=".pdf,application/pdf" required></div>
+        <button type="submit">Cargar y reindexar</button>
+      </form>
+      <div id="documents" class="list"><div class="empty">Conéctate para ver las fuentes.</div></div>
+      <button id="reindex" class="secondary" type="button" style="margin-top:12px">Reindexar todas las fuentes</button>
+    </section>
+    <section class="panel">
+      <h2>Revisión humana</h2>
+      <p class="help">Las abstenciones y bloqueos de seguridad llegan aquí automáticamente. También puedes recibir solicitudes manuales desde el chat.</p>
+      <div id="reviews" class="list"><div class="empty">Conéctate para ver la cola.</div></div>
+    </section>
+  </div>
+  <div class="links"><a href="http://localhost:9090" target="_blank" rel="noopener">Prometheus</a><a href="http://localhost:3000" target="_blank" rel="noopener">Grafana</a></div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+let adminToken = "";
+function mensaje(texto, tipo="") { $("status").textContent=texto; $("status").className=`status ${tipo}`; }
+async function api(url, options={}) {
+  const headers = new Headers(options.headers || {});
+  headers.set("X-Admin-Token", adminToken);
+  const response = await fetch(url,{...options,headers});
+  const body = await response.json().catch(()=>({detail:`HTTP ${response.status}`}));
+  if(!response.ok) throw new Error(body.detail || `HTTP ${response.status}`);
+  return body;
+}
+async function cargarDocumentos() {
+  const data=await api("/api/admin/documentos");
+  $("documents").innerHTML=data.documentos.length ? data.documentos.map(d=>
+    `<article class="card"><h3>${esc(d.nombre)}</h3><div class="meta">${d.fragmentos} fragmentos</div><div class="meta">${d.referencias.map(esc).join(" · ")}</div></article>`
+  ).join("") : '<div class="empty">No hay documentos indexados.</div>';
+}
+async function cargarRevisiones() {
+  const data=await api("/api/admin/revisiones");
+  $("reviews").innerHTML=data.revisiones.length ? data.revisiones.map(r=>{
+    const refs=(r.metadatos_originales?.citas||[]).map(c=>`${c.documento||c.titulo} · ${c.ubicacion||""}`).join("\n");
+    return `<article class="card">
+      <h3>Revisión #${r.id} · conversación ${r.conversacion_id}</h3>
+      <div class="meta">Motivo: ${esc(r.motivo||"Solicitud del usuario")} · ${new Date(r.creada_en*1000).toLocaleString("es-PE")}</div>
+      <div class="quote"><b>Pregunta</b>\n${esc(r.pregunta||"")}\n\n<b>Respuesta propuesta</b>\n${esc(r.respuesta_original)}${refs?`\n\n<b>Referencias</b>\n${esc(refs)}`:""}</div>
+      <div class="review-actions">
+        <div class="field"><label for="rev-${r.id}">Revisor</label><input id="rev-${r.id}" maxlength="60" placeholder="Nombre del revisor"></div>
+        <div class="field"><label for="comment-${r.id}">Comentario de revisión (obligatorio)</label><textarea id="comment-${r.id}" maxlength="1000" placeholder="Motivo de la decisión"></textarea></div>
+        <div class="field"><label for="answer-${r.id}">Respuesta final (obligatoria solo para editar)</label><textarea id="answer-${r.id}" maxlength="4000" placeholder="Texto corregido"></textarea></div>
+        <div class="row"><button type="button" data-review="${r.id}" data-decision="APROBADA">Publicar original</button><button type="button" data-review="${r.id}" data-decision="EDITADA">Editar y publicar</button><button type="button" class="danger" data-review="${r.id}" data-decision="RETIRADA">Retirar respuesta</button></div>
+      </div>
+    </article>`;
+  }).join("") : '<div class="empty">No hay revisiones pendientes.</div>';
+}
+async function actualizar() {
+  try { await Promise.all([cargarDocumentos(),cargarRevisiones()]); mensaje("Conectado al panel administrador.","ok"); }
+  catch(error) { mensaje(error.message,"error"); }
+}
+$("auth").addEventListener("submit",async event=>{event.preventDefault();adminToken=$("token").value;await actualizar();});
+$("upload").addEventListener("submit",async event=>{
+  event.preventDefault(); const file=$("pdf").files[0]; if(!file)return;
+  const form=new FormData(); form.append("archivo",file);
+  try { const result=await api("/api/admin/documentos",{method:"POST",body:form}); mensaje(`${result.mensaje} ${result.fragmentos} fragmentos, ${result.dim} dimensiones.`,"ok"); $("pdf").value=""; await actualizar(); }
+  catch(error) { mensaje(error.message,"error"); }
+});
+$("reindex").addEventListener("click",async()=>{
+  try { const result=await api("/api/admin/indexar",{method:"POST"}); mensaje(`${result.mensaje} ${result.fragmentos} fragmentos, ${result.dim} dimensiones.`,"ok"); await actualizar(); }
+  catch(error) { mensaje(error.message,"error"); }
+});
+$("reviews").addEventListener("click",async event=>{
+  const button=event.target.closest("[data-review]"); if(!button)return;
+  const id=button.dataset.review, decision=button.dataset.decision;
+  const revisor=$(`rev-${id}`).value.trim(), comentario=$(`comment-${id}`).value.trim();
+  const respuesta_final=$(`answer-${id}`).value.trim();
+  if(!revisor||comentario.length<5||(decision==="EDITADA"&&!respuesta_final)){mensaje("Completa revisor, comentario y, si editas, la respuesta final.","error");return;}
+  button.disabled=true;
+  try { await api(`/api/admin/revisiones/${id}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({decision,revisor,comentario,respuesta_final:respuesta_final||null})}); mensaje("Revisión guardada y respuesta devuelta al chat.","ok"); await actualizar(); }
+  catch(error) { mensaje(error.message,"error"); button.disabled=false; }
+});
+</script>
+</body>
+</html>

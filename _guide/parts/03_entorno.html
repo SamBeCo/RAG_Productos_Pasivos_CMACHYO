@@ -1,0 +1,97 @@
+<section id="s2" data-title="Carpetas, entorno y .env">
+  <div class="step-head"><span class="badge">Paso 2</span><h2>Carpetas, entorno virtual, dependencias y <code>.env</code></h2><span class="time">20 min</span></div>
+  <p class="why">Preparas el esqueleto del proyecto y el entorno de Python. Al final tendrás tus dos claves guardadas donde corresponde: en <code>.env</code>, nunca en el código.</p>
+
+  <div class="win winonly"><b>🪟 Windows: 7 trampas que conviene conocer ANTES de ejecutar nada</b>
+    <ol style="margin:6px 0 0 18px; padding:0">
+      <li><b>Usa PowerShell</b> (Windows Terminal → PowerShell). Los comandos están escritos para <i>Windows PowerShell 5.1</i>; también sirven en PowerShell 7. <b>No los pegues en cmd.exe.</b></li>
+      <li><b><code>python</code> puede abrir la Microsoft Store.</b> Verifica con <code>py -3 --version</code>; si falla, instala Python desde python.org marcando <i>"Add python.exe to PATH"</i>.</li>
+      <li><b>Carpeta corta, sin tildes ni espacios y fuera de OneDrive</b>, por ejemplo <code>C:\labs</code>. OneDrive bloquea archivos de <code>.venv</code> mientras sincroniza.</li>
+      <li><b>Política de ejecución:</b> si <code>Activate.ps1</code> "no está firmado", usa el comando de la variante B más abajo (solo afecta a esa ventana).</li>
+      <li><b><code>&amp;&amp;</code> no existe en PowerShell 5.1.</b> Un comando por línea.</li>
+      <li><b>Activa "Extensiones de nombre de archivo"</b> en el Explorador: si el Bloc de notas guarda <code>.env.txt</code>, la configuración nunca se leerá.</li>
+      <li><b>Docker Desktop debe estar abierto</b> (ícono de la ballena quieto) antes de cualquier <code>docker compose</code>, y usar el motor WSL 2.</li>
+    </ol>
+  </div>
+
+  <div class="theory"><b>📖 Teoría · el mapa del proyecto</b>
+    <div class="formula tree">lab-06-riesgo-aprobacion/
+├── app/            la aplicación: config, métricas, embeddings, RAG, router, guardas, LLM, agente, API
+├── rules/          las reglas en UN lugar (politicas.py) y el generador del PDF
+├── data/           rutas.json (router), router_gold.json (evaluación), PDF, índice y base SQLite
+├── web/            asesor.html y analista.html (HTML + JavaScript, sin compilación)
+├── tests/          una prueba por módulo; ninguna llama a una API real
+├── eval/           medición del router con un set de oro
+├── scripts/        prueba de humo de las claves reales
+├── loadgen/        tráfico de prueba para Grafana
+├── prometheus/ grafana/   configuración de la observabilidad
+└── Dockerfile  docker-compose.yml  .env.example  requirements*.txt  pytest.ini</div>
+    <p><b>¿Por qué <code>__init__.py</code> y <code>python -m …</code>?</b> El archivo vacío convierte cada carpeta en un <i>paquete</i>. Con <code>python -m app.ingesta</code> Python agrega la raíz del proyecto al camino de importación y funcionan los <code>from app.config import …</code> en cualquier sistema operativo.</p>
+  </div>
+
+  <h3><span class="ic">✍️</span>1) Estructura y entorno virtual</h3>
+  <div class="code os-mac"><div class="code-h"><span class="fn">Terminal</span><span class="tag">macOS / Linux</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">mkdir lab-06-riesgo-aprobacion
+cd lab-06-riesgo-aprobacion
+mkdir -p app rules data web tests eval scripts loadgen prometheus grafana/dashboards
+mkdir -p grafana/provisioning/datasources grafana/provisioning/dashboards
+touch app/__init__.py rules/__init__.py tests/__init__.py eval/__init__.py scripts/__init__.py loadgen/__init__.py
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip</code></pre></div>
+  <div class="code os-win"><div class="code-h"><span class="fn">PowerShell</span><span class="tag">Windows (PowerShell)</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">New-Item -ItemType Directory -Force lab-06-riesgo-aprobacion | Out-Null
+Set-Location lab-06-riesgo-aprobacion
+New-Item -ItemType Directory -Force app, rules, data, web, tests, eval, scripts, loadgen, prometheus, grafana\dashboards | Out-Null
+New-Item -ItemType Directory -Force grafana\provisioning\datasources, grafana\provisioning\dashboards | Out-Null
+New-Item -ItemType File -Force app\__init__.py, rules\__init__.py, tests\__init__.py, eval\__init__.py, scripts\__init__.py, loadgen\__init__.py | Out-Null
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip</code></pre></div>
+  <div class="win winonly"><b>Variante B · si <code>Activate.ps1</code> da error de "ejecución de scripts deshabilitada"</b>
+    <p>Permite scripts <b>solo en esta ventana</b> (no cambia la configuración del equipo) y vuelve a activar:</p>
+  </div>
+  <div class="code os-mac"><div class="code-h"><span class="fn">Terminal</span><span class="tag">macOS / Linux</span><button class="copy">Copiar</button></div><pre><code data-lang="sh"># En macOS/Linux no hace falta: si "source" falló, revisa que estás dentro de la carpeta del laboratorio
+pwd</code></pre></div>
+  <div class="code os-win"><div class="code-h"><span class="fn">PowerShell</span><span class="tag">Windows (PowerShell)</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1</code></pre></div>
+  <div class="check"><b>✔ Verifica</b> el prompt empieza con <code>(.venv)</code>. Cada vez que abras una terminal nueva debes activar el entorno de nuevo.</div>
+
+  <h3><span class="ic">✍️</span>2) Archivos de proyecto</h3>
+  <p>Crea estos archivos en la raíz con VS Code (<i>New File</i>), pega el contenido y guarda.</p>
+  <div class="code"><div class="code-h"><span class="fn">requirements.txt</span><span class="tag">crear</span><button class="copy">Copiar</button></div><pre><code data-lang="txt">{{FILE:requirements.txt}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">requirements-dev.txt</span><span class="tag">crear</span><button class="copy">Copiar</button></div><pre><code data-lang="txt">{{FILE:requirements-dev.txt}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">pytest.ini</span><span class="tag">crear</span><button class="copy">Copiar</button></div><pre><code data-lang="txt">{{FILE:pytest.ini}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">.gitignore</span><span class="tag">crear</span><button class="copy">Copiar</button></div><pre><code data-lang="txt">{{FILE:.gitignore}}</code></pre></div>
+  <div class="code"><div class="code-h"><span class="fn">.gitattributes</span><span class="tag">crear</span><button class="copy">Copiar</button></div><pre><code data-lang="txt">{{FILE:.gitattributes}}</code></pre></div>
+  <p class="why"><code>.gitattributes</code> evita una falla silenciosa de Windows: Git puede convertir los saltos de línea a <code>CRLF</code> al clonar, y los YAML o scripts que lee Docker (Linux) deben tener <code>LF</code>.</p>
+
+  <h3><span class="ic">✍️</span>3) Dependencias</h3>
+  <div class="code"><div class="code-h"><span class="fn">Terminal / PowerShell (entorno activo)</span><span class="tag">todos los sistemas</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">python -m pip install -r requirements-dev.txt</code></pre></div>
+  <div class="tw"><table class="wrap">
+    <tr><th>Paquete</th><th>Para qué</th></tr>
+    <tr><td><code>fastapi</code>, <code>uvicorn</code></td><td>API web y servidor</td></tr>
+    <tr><td><code>httpx</code></td><td>Cliente HTTP para Jev (y para la carga de prueba)</td></tr>
+    <tr><td><code>openai</code></td><td>SDK oficial: Responses API y embeddings. Desde la versión 2 usa internamente <code>httpx2</code></td></tr>
+    <tr><td><code>numpy</code></td><td>Vectores y similitud coseno</td></tr>
+    <tr><td><code>pypdf</code>, <code>reportlab</code></td><td>Leer el PDF / generarlo</td></tr>
+    <tr><td><code>prometheus_client</code></td><td>Métricas en <code>/metrics</code></td></tr>
+    <tr><td><code>pydantic</code>, <code>python-dotenv</code></td><td>Validar el formulario / leer <code>.env</code></td></tr>
+  </table></div>
+
+  <h3><span class="ic">🔑</span>4) Tus claves en <code>.env</code></h3>
+  <div class="code"><div class="code-h"><span class="fn">.env.example</span><span class="tag">crear</span><button class="copy">Copiar</button></div><pre><code data-lang="txt">{{FILE:.env.example}}</code></pre></div>
+  <p>Copia la plantilla como <code>.env</code> y ábrela para pegar tus claves:</p>
+  <div class="code os-mac"><div class="code-h"><span class="fn">Terminal</span><span class="tag">macOS / Linux</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">cp .env.example .env
+nano .env</code></pre></div>
+  <div class="code os-win"><div class="code-h"><span class="fn">PowerShell</span><span class="tag">Windows (PowerShell)</span><button class="copy">Copiar</button></div><pre><code data-lang="sh">Copy-Item .env.example .env
+notepad .env</code></pre></div>
+  <div class="warn"><b>⚠ Seguridad de las claves</b>
+    <ul class="plain">
+      <li>Escribe la clave <b>sin comillas y sin espacios</b>: <code>OPENAI_API_KEY=sk-...</code></li>
+      <li><code>.env</code> está en <code>.gitignore</code>: nunca lo subas a un repositorio, no lo pegues en un chat ni en una captura de pantalla.</li>
+      <li>Cambia <code>ANALISTA_TOKEN</code> por una frase propia: es lo que separa al asesor del analista.</li>
+      <li>Si una clave se filtra, <b>revócala</b> en la consola del proveedor (no basta con borrarla del archivo).</li>
+    </ul>
+  </div>
+  <div class="win winonly"><b>🪟 Si editas <code>.env</code> con el Bloc de notas</b> se guarda en UTF-8 con BOM; si lo creas con <code>echo X=1 &gt; .env</code> en PowerShell 5.1 se guarda en UTF-16. <code>app/config.py</code> (paso 3) entiende los dos formatos, pero <b>verifica que el archivo se llame <code>.env</code> y no <code>.env.txt</code></b>.</div>
+  <div class="note"><b>¿No tienes clave de Jev?</b> Según publicaciones de septiembre de 2026, TypeSafe pausó los registros nuevos (las cuentas existentes siguen funcionando). Usa <code>ROUTER_PROVIDER=embeddings</code>: se enruta comparando embeddings de OpenAI con los ejemplos de <code>data/rutas.json</code>. Todo lo demás del laboratorio es igual.</div>
+</section>

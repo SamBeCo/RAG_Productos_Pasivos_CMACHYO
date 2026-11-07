@@ -1,0 +1,10 @@
+.venv
+__pycache__
+.pytest_cache
+.env
+_guide
+tests
+docs
+*.zip
+data/indice.npz
+data/solicitudes.db

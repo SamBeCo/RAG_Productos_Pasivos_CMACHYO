@@ -1,0 +1,4 @@
+SERVICE      STATUS                   PORTS
+app          Up 6 minutes (healthy)   0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp
+grafana      Up 6 minutes             0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+prometheus   Up 6 minutes             0.0.0.0:9090->9090/tcp, [::]:9090->9090/tcp

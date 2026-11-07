@@ -1,0 +1,50 @@
+<section id="s15" data-title="Ejercicios y análisis">
+  <div class="step-head"><span class="badge">Paso 15</span><h2>Ejercicios, limitaciones y análisis</h2><span class="time">60 min</span></div>
+  <p class="why">Ahora rompe, mide y mejora. El análisis profundo completo está en <code>docs/ANALISIS_PROFUNDO.md</code>.</p>
+
+  <h3><span class="ic">🏋️</span>Ejercicios</h3>
+  <details class="ex"><summary>1 · Mutación: ¿tus pruebas detectan una guarda rota?</summary><div>
+    <p>En <code>app/guardas.py</code> cambia <code>if calc["cuota_ingreso"] &gt; P["cuota_ingreso_max"]:</code> por <code>&gt;=</code>. Ejecuta <code>python -m pytest tests/test_herramientas_guardas.py</code>. ¿Qué prueba falla y por qué? Restaura el archivo. Repite quitando <code>"Pérdida"</code> de la tupla del Art. 5.3.</p>
+  </div></details>
+  <details class="ex"><summary>2 · Medir el router con tus propias frases</summary><div>
+    <p>Agrega 10 frases a <code>data/router_gold.json</code> como las escribiría un asesor real (con errores de tipeo, jerga, sin tildes: "q tasa tiene el vehicular", "el cliente esta en cpp se puede?"). Compara Jev, <code>embeddings</code> y <code>hash</code>. ¿Cuál degrada más con el texto informal?</p>
+  </div></details>
+  <details class="ex"><summary>3 · Una ruta nueva: <code>reprogramacion</code></summary><div>
+    <p>Agrega en <code>data/rutas.json</code> una ruta para solicitudes de reprogramación de deuda (criterio en inglés + ejemplos). ¿Qué más hay que cambiar para que la API la maneje? Pista: <code>metricas.RUTAS</code>, <code>main.crear_solicitud</code> y el router de pruebas. ¿Qué debería pasar si Jev la elige y el código todavía no la maneja?</p>
+  </div></details>
+  <details class="ex"><summary>4 · Cambiar una regla de punta a punta</summary><div>
+    <p>Riesgos decide bajar el máximo de cuota/ingreso a 25%. Cambia <b>un solo número</b> en <code>rules/politicas.py</code>, regenera el PDF, re-indexa y ejecuta las pruebas. ¿Qué prueba falla primero y qué te dice? ¿Qué tendrías que hacer en producción para que las solicitudes ya evaluadas con la regla anterior sigan siendo auditables?</p>
+  </div></details>
+  <details class="ex"><summary>5 · Alerta en Prometheus</summary><div>
+    <p>Escribe una regla de alerta: "más de 3 usos del router de respaldo en 5 minutos". Pista: <code>increase(lab06_router_respaldo_total[5m]) &gt; 3</code>. Agrégala con <code>rule_files</code> en <code>prometheus.yml</code> y pruébala poniendo una clave de Jev inválida en <code>.env</code>.</p>
+  </div></details>
+  <details class="ex"><summary>6 · Memoria larga: resumir en vez de recortar</summary><div>
+    <p>El chat envía los 6 últimos turnos (<code>HISTORIAL_MAX</code>). En una conversación de 30 mensajes, el asesor puede referirse a algo del mensaje 3 ("lo del aval que me dijiste"). Implementa un <b>resumen acumulado</b>: cada 6 turnos, el LLM resume la conversación en 3 líneas y ese resumen viaja como primer elemento del historial. ¿Qué riesgo nuevo introduce un resumen (pista: ¿quién verifica que el resumen no inventó una condición)?</p>
+  </div></details>
+  <details class="ex"><summary>7 · Nombres propios en el chat</summary><div>
+    <p><code>enmascarar()</code> no detecta "Rosa Quispe". Escribe en el chat "Mi clienta Rosa Quispe Huamán pregunta por el MYPE" y comprueba en una prueba (con el servidor simulado de <code>test_privacidad.py</code>) que el nombre <b>sí</b> sale hacia OpenAI. Propón dos soluciones: (a) una pregunta <code>noul</code> de Jev "¿el mensaje contiene el nombre de una persona?" que bloquee el envío, (b) un detector de entidades local. Compara costo, latencia y falsos negativos.</p>
+  </div></details>
+  <details class="ex"><summary>8 · Caché semántico (Módulo 5)</summary><div>
+    <p>Las consultas de producto se repiten mucho ("¿qué documentos pide…?"). Agrega en <code>responder_consulta</code> un diccionario en memoria: si el embedding de la pregunta tiene similitud &gt; 0.95 con una pregunta ya respondida, devuelve esa respuesta sin llamar a OpenAI. Mide en Grafana cuántos tokens ahorras. ¿Qué riesgo tiene cachear respuestas de una evaluación de crédito (y por qué no hacerlo)?</p>
+  </div></details>
+
+  <h3><span class="ic">⚠️</span>Limitaciones declaradas</h3>
+  <ul class="plain">
+    <li><b>Jev y OpenAI no se ejecutaron con claves reales</b> al preparar la guía. El formato de Jev viene de documentación de terceros; si <code>verificar_claves</code> responde 422, el mensaje dice qué campo ajustar.</li>
+    <li><b>El token de analista no es autenticación</b>: no hay usuarios, contraseñas, sesiones ni registro de quién usó el token. En producción: SSO, roles y auditoría por usuario.</li>
+    <li><b>La calibración del router es optimista</b>: 24 frases escritas por el autor del laboratorio, no por asesores reales.</li>
+    <li><b>Datos personales a terceros</b>: los mensajes del chat y los datos financieros se envían a TypeSafe y OpenAI con DNI, teléfono, RUC y correo enmascarados, pero <b>no los nombres propios</b> (ejercicio 7). Con datos reales haría falta un acuerdo de tratamiento de datos y evaluar la residencia de datos.</li>
+    <li><b>Reformulación</b>: si el LLM reescribe mal una pregunta de seguimiento, el RAG busca otra cosa. El chat muestra "Busqué en el manual: …" para que el asesor lo note; no hay verificación automática.</li>
+    <li><b>Detección de inyección</b>: depende de Jev (no probado con la API real, ni con textos en español) y solo marca, no bloquea.</li>
+    <li><b>Un solo proceso</b>: SQLite con un candado alcanza para el laboratorio, no para varios servidores.</li>
+    <li><b>Windows</b>: comandos analizados y trampas simuladas; no ejecutados en un Windows real.</li>
+  </ul>
+
+  <h3><span class="ic">✅</span>Autoevaluación final</h3>
+  <details class="qz"><summary>El analista aprueba el 100% de las propuestas del agente durante un mes. ¿Es una buena noticia?</summary><div class="ans"><b>No necesariamente.</b> Puede indicar "sesgo de automatización": el humano firma sin revisar. Un control real muestrea solicitudes aprobadas para revisión independiente y vigila que el tiempo hasta la decisión no sea sospechosamente corto.</div></details>
+  <details class="qz"><summary>Jev se cae una hora. ¿Qué ven el asesor, el analista y Grafana?</summary><div class="ans"><b>El asesor</b> no nota nada (las solicitudes se enrutan con embeddings). <b>El analista</b> ve "RESPALDO: Jev [servidor]…" en cada solicitud. <b>Grafana</b> muestra el indicador "Respaldo" subiendo, errores de <code>jev</code> y latencia p95 de <code>jev</code> alta (por los reintentos).</div></details>
+  <details class="qz"><summary>¿Por qué el chat pide un formulario en vez de sacar los números de la conversación?</summary><div class="ans"><b>Porque las guardas confían en los números que reciben.</b> Si un LLM extrajera "3,500" como 3.5, la cuota/ingreso sería absurda y el dictamen cambiaría sin que ninguna guarda lo detecte. El chat sirve para entender; el formulario validado, para decidir.</div></details>
+  <details class="qz"><summary>¿Por qué el agente no calcula la cuota con el LLM, si los modelos actuales saben matemáticas?</summary><div class="ans"><b>Porque el resultado debe ser exacto, repetible y auditable.</b> Una función pura da siempre el mismo número y se prueba contra una amortización simulada; un LLM puede redondear distinto o equivocarse en una potencia, y no hay forma de demostrar a un auditor que no lo hará.</div></details>
+
+  <div class="check"><b>✔ Entrega</b> la suite completa debe pasar: <b>{{PASSED}} pruebas</b> en tu equipo, igual que al preparar esta guía.</div>
+</section>
